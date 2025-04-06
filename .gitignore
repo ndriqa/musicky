@@ -1,0 +1,36 @@
+# Android build
+/build/
+/app/build/
+/**/build/
+
+# Gradle
+.gradle/
+/**/*.iml
+/local.properties
+/.idea
+/captures/
+.externalNativeBuild
+
+# Signing files
+**/key.properties
+**/keystore.jks
+
+# OS crap
+.DS_Store
+Thumbs.db
+
+# Kotlin/Jetpack Compose specific
+*.kotlin_module
+
+# Log & crash files
+*.log
+
+# Misc
+*.apk
+*.ap_
+/outputs/
+.idea/
+*.hprof
+
+# Google Services
+google-services.json
