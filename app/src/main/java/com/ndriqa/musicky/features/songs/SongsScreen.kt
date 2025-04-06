@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.net.toFile
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
@@ -222,7 +223,10 @@ private fun SongDescription(
 ) {
     Text(
         modifier = modifier,
-        text = "$artist$DELIMITER$timer",
+        text = "${timer?.let { "$it$DELIMITER" } ?: ""}$artist",
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        fontSize = 13.sp
     )
 }
 
