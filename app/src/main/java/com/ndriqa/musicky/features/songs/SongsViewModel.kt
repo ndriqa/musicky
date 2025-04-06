@@ -47,11 +47,12 @@ class SongsViewModel @Inject constructor(
             MediaStore.Audio.Media.ALBUM_ID,
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.DATE_ADDED,
+            MediaStore.Audio.Media.DATE_MODIFIED,
             MediaStore.Audio.Media.DATA
         )
 
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
-        val sortOrder = "${MediaStore.Audio.Media.DATE_ADDED} ASC"
+        val sortOrder = "${MediaStore.Audio.Media.DATE_MODIFIED} DESC"
 
         context.contentResolver.query(uri, projection, selection, null, sortOrder)?.use { cursor ->
             val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
@@ -61,6 +62,7 @@ class SongsViewModel @Inject constructor(
             val albumIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
             val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
             val dateAdded = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+            val dateModified = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
             val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
 
             while (cursor.moveToNext()) {
@@ -74,6 +76,7 @@ class SongsViewModel @Inject constructor(
                     album = cursor.getString(albumCol),
                     duration = duration,
                     dateAdded = cursor.getString(dateAdded),
+                    dateModified = cursor.getString(dateModified),
                     data = cursor.getString(dataCol),
                     artworkUri = ContentUris.withAppendedId(
                         /* contentUri = */ "content://media/external/audio/albumart".toUri(),
