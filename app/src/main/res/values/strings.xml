@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Musicky</string>
+    <string name="ndriqa_developer_id" translatable="false">4859190083085293063</string>
+
+    <string name="cd_back_button">Back button</string>
+
+</resources>
