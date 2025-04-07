@@ -27,3 +27,6 @@ val HomeButtonDefault = 120.dp
 val HomeButtonElevation = 3.dp
 
 val MusicIconArtworkSizeCompact = 44.dp
+val MusicIconArtworkSizeBig = 120.dp
+
+val DefaultPlayerElevation = 2.dp

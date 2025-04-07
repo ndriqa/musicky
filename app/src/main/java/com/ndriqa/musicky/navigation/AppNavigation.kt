@@ -52,11 +52,7 @@ fun AppNavigation(
 
     Scaffold(
         modifier = modifier,
-        floatingActionButton = {
-            HustlePlayer(
-                onClick = { },
-                playerViewModel = playerViewModel
-            ) },
+        floatingActionButton = { HustlePlayer(playerViewModel = playerViewModel) },
         containerColor = Color.Transparent
     ) { paddingValues ->
 

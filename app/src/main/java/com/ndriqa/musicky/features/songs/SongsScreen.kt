@@ -195,7 +195,7 @@ private fun SongItem(
             verticalArrangement = Arrangement.spacedBy(space = PaddingNano, alignment = Alignment.CenterVertically)
         ) {
             SongTitle(text = song.title,)
-            SongDescription(artist = song.artist, timer = song.duration.toFormattedTime(showMillis = false))
+            SongDescription(artist = song.artist, timer = song.duration.toFormattedTime())
         }
 
         Box(

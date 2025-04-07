@@ -8,7 +8,7 @@ import timber.log.Timber
 import java.time.ZonedDateTime
 import java.util.Locale
 
-fun Long.toFormattedTime(showMillis: Boolean = true): String {
+fun Long.toFormattedTime(showMillis: Boolean = false): String {
     val locale = Locale.getDefault()
     val hours = this / 3600000
     val minutes = (this / 60000) % 60
