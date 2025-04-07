@@ -88,6 +88,17 @@ fun SongsScreen(
 
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(Tabs.Songs.ordinal) }
 
+    fun playSong(song: Song) {
+        val songIndex = songs.indexOf(song)
+        val nextSongs = songs.subList(songIndex, songs.size)
+        val prevSongs = songs.subList(0, songIndex)
+        val queue = nextSongs + prevSongs
+        playerViewModel.apply {
+            setQueue(queue)
+            play()
+        }
+    }
+
     Column {
         Row(
             verticalAlignment = Alignment.CenterVertically
@@ -131,7 +142,7 @@ fun SongsScreen(
                 SongItem(
                     song = song,
                     isPlaying = currentPlayingSong == song,
-                    onSongTap = playerViewModel::play,
+                    onSongTap = ::playSong,
                     onSongOptionsTap = {  }
                 )
             }
@@ -210,7 +221,6 @@ private fun SongItem(
                 .clip(shape = iconShape)
                 .clickable(onClick = { onSongOptionsTap(song) })
         ) {
-
             Icon(
                 imageVector = Icons.Rounded.MoreVert,
                 contentDescription = null,

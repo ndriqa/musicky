@@ -12,6 +12,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +56,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -73,6 +75,7 @@ import com.ndriqa.musicky.ui.theme.PaddingDefault
 import com.ndriqa.musicky.ui.theme.PaddingHalf
 import com.ndriqa.musicky.ui.theme.PaddingMini
 import com.ndriqa.musicky.ui.theme.PaddingNano
+import com.ndriqa.musicky.ui.theme.SpaceMonoFontFamily
 import kotlin.random.Random
 
 @Composable
@@ -88,6 +91,16 @@ fun HustlePlayer(
 
     val playState by playerViewModel.playingState.collectAsState()
     val isVisible by remember { derivedStateOf { playState.currentSong != null } }
+
+    val gestureModifier = Modifier.pointerInput(Unit) {
+        detectVerticalDragGestures { change, dragAmount ->
+            isExpanded = when {
+                dragAmount > 20f -> false
+                dragAmount < -20f -> true
+                else -> isExpanded
+            }
+        }
+    }
 
     val offsetPadding = PaddingDefault * 2
     val fabElevation = DefaultPlayerElevation
@@ -105,7 +118,9 @@ fun HustlePlayer(
 
             FloatingActionButton(
                 onClick = { isExpanded = !isExpanded },
-                modifier = modifier.then(sizeModifier),
+                modifier = modifier
+                    .then(sizeModifier)
+                    .then(gestureModifier),
                 shape = playerShape,
                 containerColor = MaterialTheme.colorScheme.primary,
                 elevation = elevation(
@@ -129,9 +144,9 @@ fun HustlePlayer(
                         SongEqualizer(playState)
                         SongControls(
                             playState = playState,
-                            onPlayPauseClicked = {  },
-                            onNextClicked = {  },
-                            onPrevClicked = {  }
+                            onPlayPauseClicked = playerViewModel::togglePlayPause,
+                            onNextClicked = playerViewModel::next,
+                            onPrevClicked = playerViewModel::previous
                         )
                     } else {
                         val artworkShape = RoundedCornerShape(PaddingDefault)
@@ -209,7 +224,10 @@ private fun ColumnScope.SongControls(
             val currentPosition = playState.currentPosition
             val maxPosition = playState.currentSong?.duration ?: currentPosition
 
-            Text(currentPosition.toFormattedTime())
+            Text(
+                text = currentPosition.toFormattedTime(),
+                fontFamily = SpaceMonoFontFamily
+            )
             LinearProgressIndicator(
                 modifier = Modifier.weight(1F).clip(CircleShape),
                 progress = { currentPosition.toFloat() / maxPosition },
@@ -219,7 +237,10 @@ private fun ColumnScope.SongControls(
                 gapSize = 3.dp,
                 drawStopIndicator = { } // disabling the stop dot thingy
             )
-            Text(maxPosition.toFormattedTime())
+            Text(
+                text = maxPosition.toFormattedTime(),
+                fontFamily = SpaceMonoFontFamily
+            )
         }
 
         Row {
