@@ -18,14 +18,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
@@ -53,11 +51,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toFile
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
-import coil3.compose.rememberAsyncImagePainter
-import com.ndriqa.musicky.core.data.PlayingState
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.util.extensions.toFormattedTime
 import com.ndriqa.musicky.features.player.PlayerViewModel
@@ -149,6 +147,7 @@ private fun SongItem(
     onSongOptionsTap: (Song) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val iconTint =
         if (isPlaying) MaterialTheme.colorScheme.primaryContainer
         else MaterialTheme.colorScheme.onPrimaryContainer
@@ -178,8 +177,15 @@ private fun SongItem(
                 .clip(shape = iconShape)
                 .background(color = iconBackground, shape = iconShape)
         ) {
+            val imageRequest = ImageRequest.Builder(context)
+                .data(song.artworkUri)
+                .crossfade(true)
+                .diskCachePolicy(CachePolicy.ENABLED) // enable disk caching
+                .memoryCachePolicy(CachePolicy.ENABLED) // enable memory caching
+                .build()
+
             AsyncImage(
-                model = song.artworkUri,
+                model = imageRequest,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
