@@ -3,5 +3,7 @@
     <string name="ndriqa_developer_id" translatable="false">4859190083085293063</string>
 
     <string name="cd_back_button">Back button</string>
+    <string name="add_next_in_queue">Add next in queue</string>
+    <string name="delete_song">Delete song</string>
 
 </resources>

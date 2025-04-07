@@ -12,6 +12,9 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -146,7 +150,8 @@ fun HustlePlayer(
                             playState = playState,
                             onPlayPauseClicked = playerViewModel::togglePlayPause,
                             onNextClicked = playerViewModel::next,
-                            onPrevClicked = playerViewModel::previous
+                            onPrevClicked = playerViewModel::previous,
+                            onSeek = playerViewModel::seekToProgress
                         )
                     } else {
                         val artworkShape = RoundedCornerShape(PaddingDefault)
@@ -209,6 +214,7 @@ private fun ColumnScope.SongControls(
     onPlayPauseClicked: () -> Unit,
     onNextClicked: () -> Unit,
     onPrevClicked: () -> Unit,
+    onSeek: (Float) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -228,15 +234,36 @@ private fun ColumnScope.SongControls(
                 text = currentPosition.toFormattedTime(),
                 fontFamily = SpaceMonoFontFamily
             )
-            LinearProgressIndicator(
-                modifier = Modifier.weight(1F).clip(CircleShape),
-                progress = { currentPosition.toFloat() / maxPosition },
-                trackColor = MaterialTheme.colorScheme.primaryContainer,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                strokeCap = StrokeCap.Butt,
-                gapSize = 3.dp,
-                drawStopIndicator = { } // disabling the stop dot thingy
-            )
+            Box(
+                modifier = Modifier
+                    .weight(1F)
+                    .height(24.dp)
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures { change, _ ->
+                            val width = size.width.toFloat()
+                            val percent = change.position.x / width
+                            onSeek(percent.coerceIn(0f, 1f))
+                        }
+                        detectTapGestures { offset ->
+                            val width = size.width.toFloat()
+                            val percent = offset.x / width
+                            onSeek(percent)
+                        }
+                    }
+            ) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(CircleShape)
+                        .align(Alignment.Center),
+                    progress = { currentPosition.toFloat() / maxPosition },
+                    trackColor = MaterialTheme.colorScheme.primaryContainer,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    strokeCap = StrokeCap.Butt,
+                    gapSize = 3.dp,
+                    drawStopIndicator = { } // disabling the stop dot thingy
+                )
+            }
             Text(
                 text = maxPosition.toFormattedTime(),
                 fontFamily = SpaceMonoFontFamily

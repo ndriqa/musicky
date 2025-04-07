@@ -1,8 +1,10 @@
 package com.ndriqa.musicky.features.songs
 
+import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import com.ndriqa.musicky.core.data.Song
@@ -16,6 +18,7 @@ import androidx.lifecycle.viewModelScope
 import com.ndriqa.musicky.core.util.extensions.simpleLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -25,6 +28,8 @@ class SongsViewModel @Inject constructor(
 ): ViewModel() {
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     val songs = _songs.asStateFlow()
+
+    val requestScopedDelete = MutableSharedFlow<Uri?>()
 
     fun startLoadingSongs(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -87,5 +92,49 @@ class SongsViewModel @Inject constructor(
         }
 
         return songList
+    }
+
+    fun tryDeleteSongFile(context: Context, song: Song) {
+        viewModelScope.launch {
+            val songUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, song.id)
+            if (deleteSongFile(context, songUri)) {
+                /**
+                 * on older devices, < Android 10, we don't go through mediastore
+                 * so it gets deleted directly, which means, we can remove it
+                 * directly from the list without the need to refresh the whole list.
+                 * on the contrary, >= Android 10, we refresh the songs list on
+                 * [SongsScreen]'s launcher after song removal is done*/
+                removeSongFromList(song)
+            }
+        }
+    }
+
+    fun removeSongFromList(song: Song) {
+        _songs.update { _songs.value.filterNot { it.id == song.id } }
+    }
+
+    suspend fun deleteSongFile(context: Context, uri: Uri): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                requestScopedDelete.emit(uri)
+                false
+            } else {
+                val deleted = context.contentResolver.delete(uri, null, null) > 0
+                deleted
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    fun clearDeleteRequest() {
+        viewModelScope.launch {
+            requestScopedDelete.emit(null)
+        }
+    }
+
+    companion object {
+        const val DELETE_SONG_REQUEST_CODE = 6969
     }
 }

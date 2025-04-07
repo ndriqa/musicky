@@ -1,6 +1,8 @@
 package com.ndriqa.musicky.core.util.extensions
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.os.Build
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -13,4 +15,10 @@ fun Context.getVibrator(): Vibrator? {
         @Suppress("DEPRECATION")
         getSystemService(Vibrator::class.java)
     }
+}
+
+fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

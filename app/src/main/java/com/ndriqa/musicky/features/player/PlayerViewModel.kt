@@ -77,11 +77,11 @@ class PlayerViewModel @Inject constructor(
         progressJob = null
     }
 
-    fun play(song: Song? = null) {
+    fun play(song: Song? = null): Boolean {
         val song = song ?: _queue.value.first()
-        val mediaPlayer = player ?: return
+        val mediaPlayer = player ?: return false
 
-        try {
+        return try {
             mediaPlayer.reset()
             mediaPlayer.setDataSource(song.data)
             mediaPlayer.prepare()
@@ -93,6 +93,7 @@ class PlayerViewModel @Inject constructor(
                     isPlaying = true
                 )
             }
+            true
         } catch (e: Exception) {
             e.printStackTrace()
             _playingState.update {
@@ -101,6 +102,7 @@ class PlayerViewModel @Inject constructor(
                     currentSong = null
                 )
             }
+            false
         }
     }
 
@@ -119,12 +121,23 @@ class PlayerViewModel @Inject constructor(
         player?.seekTo(position, MediaPlayer.SEEK_CLOSEST)
     }
 
+    fun seekToProgress(progress: Float) {
+        val currentSong = _playingState.value.currentSong ?: return
+        val seekPosition = currentSong.duration * progress
+        seekTo(seekPosition.toLong())
+    }
+
     fun next() {
         if (_queue.value.isEmpty()) return
         val trueNextIndex = _currentIndex.value + 1
         val nextIndex = if (trueNextIndex > _queue.value.lastIndex) 0 else trueNextIndex
         if (nextIndex != _currentIndex.value) {
-            play(_queue.value[nextIndex])
+            val nextSong = _queue.value[nextIndex]
+            val playStarted = play(nextSong)
+            if (!playStarted) {
+                _queue.value = _queue.value.filterNot { it.id == nextSong.id }
+                next()
+            }
         }
     }
 
@@ -133,7 +146,12 @@ class PlayerViewModel @Inject constructor(
         val truePrevIndex = _currentIndex.value - 1
         val prevIndex = if (truePrevIndex < 0) _queue.value.lastIndex else truePrevIndex
         if (prevIndex != _currentIndex.value) {
-            play(_queue.value[prevIndex])
+            val prevSong = _queue.value[prevIndex]
+            val playStarted = play(prevSong)
+            if (!playStarted) {
+                _queue.value = _queue.value.filterNot { it.id == prevSong.id }
+                previous()
+            }
         }
     }
 

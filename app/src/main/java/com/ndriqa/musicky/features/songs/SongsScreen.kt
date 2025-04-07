@@ -1,5 +1,12 @@
 package com.ndriqa.musicky.features.songs
 
+import android.app.Activity
+import android.content.ContentUris
+import android.os.Build
+import android.provider.MediaStore
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -24,17 +31,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -45,18 +57,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.toUri
+import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.Song
+import com.ndriqa.musicky.core.util.extensions.findActivity
 import com.ndriqa.musicky.core.util.extensions.toFormattedTime
 import com.ndriqa.musicky.features.player.PlayerViewModel
 import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeCompact
@@ -86,6 +104,14 @@ fun SongsScreen(
     val currentPlayState by playerViewModel.playingState.collectAsState()
     val currentPlayingSong by remember { derivedStateOf { currentPlayState.currentSong } }
 
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        if (it.resultCode == Activity.RESULT_OK) {
+            songsViewModel.startLoadingSongs(context)
+        }
+    }
+    val requestedSongToBeDeleted by songsViewModel.requestScopedDelete.collectAsState(null)
+
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(Tabs.Songs.ordinal) }
 
     fun playSong(song: Song) {
@@ -96,6 +122,20 @@ fun SongsScreen(
         playerViewModel.apply {
             setQueue(queue)
             play()
+        }
+    }
+
+    fun deleteSong(song: Song) {
+        songsViewModel.tryDeleteSongFile(context, song)
+    }
+
+    LaunchedEffect(requestedSongToBeDeleted) {
+        requestedSongToBeDeleted?.let { uri ->
+            val pendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                MediaStore.createDeleteRequest(context.contentResolver, listOf(uri))
+            } else null
+            pendingIntent?.let { launcher.launch(IntentSenderRequest.Builder(it).build()) }
+            songsViewModel.clearDeleteRequest()
         }
     }
 
@@ -119,7 +159,7 @@ fun SongsScreen(
                     .padding(horizontal = PaddingHalf)
                     .size(44.dp)
                     .clip(RoundedCornerShape(PaddingHalf))
-                    .clickable {  }
+                    .clickable { }
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Search,
@@ -143,7 +183,8 @@ fun SongsScreen(
                     song = song,
                     isPlaying = currentPlayingSong == song,
                     onSongTap = ::playSong,
-                    onSongOptionsTap = {  }
+                    onAddNextInQueue = {},
+                    onDeleteSong = ::deleteSong
                 )
             }
         }
@@ -155,7 +196,8 @@ private fun SongItem(
     song: Song,
     isPlaying: Boolean,
     onSongTap: (Song) -> Unit,
-    onSongOptionsTap: (Song) -> Unit,
+    onAddNextInQueue: (Song) -> Unit,
+    onDeleteSong: (Song) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -182,6 +224,8 @@ private fun SongItem(
             .padding(horizontal = PaddingCompact, vertical = PaddingHalf),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        var dropDownExpanded by remember { mutableStateOf(false) }
+
         Box(
             modifier = Modifier
                 .size(MusicIconArtworkSizeCompact)
@@ -219,14 +263,37 @@ private fun SongItem(
             modifier = Modifier
                 .size(MusicIconArtworkSizeCompact)
                 .clip(shape = iconShape)
-                .clickable(onClick = { onSongOptionsTap(song) })
+                .clickable(onClick = { dropDownExpanded = true })
         ) {
+
             Icon(
                 imageVector = Icons.Rounded.MoreVert,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.align(Alignment.Center)
             )
+
+            DropdownMenu(
+                expanded = dropDownExpanded,
+                onDismissRequest = { dropDownExpanded = false },
+                offset = DpOffset(0.dp, PaddingCompact),
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.add_next_in_queue)) },
+                    onClick = {
+                        dropDownExpanded = false
+                        onAddNextInQueue(song)
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.delete_song)) },
+                    onClick = {
+                        dropDownExpanded = false
+                        onDeleteSong(song)
+                    }
+                )
+            }
         }
     }
 }
