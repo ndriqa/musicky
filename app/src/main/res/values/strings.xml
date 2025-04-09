@@ -5,5 +5,7 @@
     <string name="cd_back_button">Back button</string>
     <string name="add_next_in_queue">Add next in queue</string>
     <string name="delete_song">Delete song</string>
+    <string name="where_the_songs_at">Where the songs at?</string>
+    <string name="where_the_albums_at">Where the albums at?</string>
 
 </resources>

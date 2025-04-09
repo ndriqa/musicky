@@ -7,6 +7,7 @@ import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -15,6 +16,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -59,6 +61,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
@@ -77,6 +80,7 @@ import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.util.extensions.findActivity
 import com.ndriqa.musicky.core.util.extensions.toFormattedTime
 import com.ndriqa.musicky.features.player.PlayerViewModel
+import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeBig
 import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeCompact
 import com.ndriqa.musicky.ui.theme.PaddingCompact
 import com.ndriqa.musicky.ui.theme.PaddingDefault
@@ -169,25 +173,62 @@ fun SongsScreen(
             }
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1F),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            itemsIndexed(
-                items = songs,
-                key = { _, song -> song.id }
-            ) { index, song ->
-                SongItem(
-                    song = song,
-                    isPlaying = currentPlayingSong == song,
-                    onSongTap = ::playSong,
-                    onAddNextInQueue = {},
-                    onDeleteSong = ::deleteSong
-                )
+        if (songs.isEmpty()) {
+            NoInfoUi(Tabs.entries[selectedTabIndex])
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1F),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                itemsIndexed(
+                    items = songs,
+                    key = { _, song -> song.id }
+                ) { index, song ->
+                    SongItem(
+                        song = song,
+                        isPlaying = currentPlayingSong == song,
+                        onSongTap = ::playSong,
+                        onAddNextInQueue = {},
+                        onDeleteSong = ::deleteSong
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun ColumnScope.NoInfoUi(selectedTab: Tabs) {
+    @StringRes val noInfoTextResId = when(selectedTab) {
+        Tabs.Songs -> R.string.where_the_songs_at
+        Tabs.Albums -> R.string.where_the_albums_at
+    }
+    val contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .7f)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .weight(1F)
+            .padding(PaddingCompact),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(PaddingCompact, Alignment.CenterVertically)
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.MusicNote,
+            modifier = Modifier.size(MusicIconArtworkSizeCompact),
+            contentDescription = null,
+            tint = contentColor
+        )
+
+        Text(
+            text = stringResource(noInfoTextResId),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            fontSize = 20.sp,
+            color = contentColor
+        )
     }
 }
 
