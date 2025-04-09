@@ -6,7 +6,7 @@ composeBom = "2025.03.01"
 coreKtx = "1.15.0"
 crashlyticsPlugin = "3.0.3"
 datastore = "1.1.4"
-espressoCore = "3.6.1"
+espressoCore = "3.5.0" # no need to upgrade
 firebaseBom = "33.12.0"
 googleAds = "24.1.0"
 googlePlay = "2.0.2"
@@ -15,8 +15,8 @@ hilt = "2.56"
 hiltNavigation = "1.2.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
-kotlin = "2.1.0"
-ksp = "2.1.20-1.0.32"
+kotlin = "2.1.10" # don't upgrade for your sanity's sake
+ksp = "2.1.10-1.0.30" # don't upgrade for your sanity's sake
 lifecycleRuntimeKtx = "2.8.7"
 materialIcons = "1.7.8"
 navigation = "2.8.9"
@@ -26,7 +26,6 @@ room = "2.6.1"
 splashscren = "1.0.1"
 uiTestAndroid = "1.7.8"
 serialization = "1.8.0"
-serializationPlugin = "2.1.20"
 timber = "5.0.1"
 lottie = "6.6.4"
 coil = "3.1.0"
@@ -76,7 +75,7 @@ coil = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil"
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "serializationPlugin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-parcelize = { id = "kotlin-parcelize" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
