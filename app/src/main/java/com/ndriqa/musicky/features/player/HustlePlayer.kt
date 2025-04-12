@@ -183,7 +183,11 @@ fun HustlePlayer(
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .graphicsLayer { rotationZ = rotation }
+                                    .graphicsLayer {
+                                        if (playState.isPlaying) {
+                                            rotationZ = rotation
+                                        }
+                                    }
                                 ,
                                 fallback = fallbackIcon
                             )
@@ -191,7 +195,11 @@ fun HustlePlayer(
                             Spacer(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .5F))
+                                    .background(
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                                            alpha = .5F
+                                        )
+                                    )
                             )
 
                             Icon(

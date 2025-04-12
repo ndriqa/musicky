@@ -106,15 +106,30 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun stop() {
+        pausePlaying()
+        player?.reset()
+        _playingState.value = PlayingState()
+        _queue.value = emptyList()
+        stopProgressUpdates()
+    }
+
     fun togglePlayPause() {
         val mediaPlayer = player ?: return
-        if (mediaPlayer.isPlaying) {
-            mediaPlayer.pause()
-            _playingState.update { it.copy(isPlaying = false) }
-        } else {
+        if (mediaPlayer.isPlaying) pausePlaying()
+        else resumePlaying()
+    }
+
+    fun resumePlaying() {
+        player?.let { mediaPlayer ->
             mediaPlayer.start()
             _playingState.update { it.copy(isPlaying = true) }
         }
+    }
+
+    fun pausePlaying() {
+        player?.pause()
+        _playingState.update { it.copy(isPlaying = false) }
     }
 
     fun seekTo(position: Long) {
