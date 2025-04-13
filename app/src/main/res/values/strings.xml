@@ -9,6 +9,7 @@
     <string name="where_the_albums_at">Where the albums at?</string>
     <string name="unknown">Unknown</string>
     <string name="play_album">Play Album</string>
+    <string name="search">Search...</string>
 
     <plurals name="num_songs">
         <item quantity="one">%d song</item>

@@ -1,13 +1,13 @@
 package com.ndriqa.musicky.features.songs
 
 import android.app.Activity
-import android.content.ContentUris
 import android.os.Build
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,15 +33,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Search
@@ -50,9 +52,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -67,24 +68,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.LinearGradient
-import androidx.compose.ui.graphics.LinearGradientShader
-import androidx.compose.ui.graphics.Shader
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -96,20 +97,16 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import coil3.toUri
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.Album
 import com.ndriqa.musicky.core.data.Song
-import com.ndriqa.musicky.core.util.extensions.findActivity
 import com.ndriqa.musicky.core.util.extensions.toFormattedTime
 import com.ndriqa.musicky.features.player.PlayerViewModel
-import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeBig
 import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeCompact
 import com.ndriqa.musicky.ui.theme.PaddingCompact
 import com.ndriqa.musicky.ui.theme.PaddingDefault
@@ -120,8 +117,18 @@ import com.ndriqa.musicky.ui.theme.QuicksandFontFamily
 
 private const val DELIMITER = " - "
 
-private enum class Tabs {
-    Songs, Albums
+private enum class MusicTab(
+    val title: String,
+    val icon: ImageVector
+) {
+    Songs(
+        title = "Songs",
+        icon = Icons.Rounded.MusicNote
+    ),
+    Albums(
+        title = "Albums",
+        icon = Icons.Rounded.Album
+    )
 }
 
 private val TabIndicatorAnimationSpec = spring<Dp>(
@@ -135,6 +142,7 @@ fun SongsScreen(
     songsViewModel: SongsViewModel = hiltViewModel(),
     playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
+    val allSongs by songsViewModel.allSongs.collectAsState()
     val songs by songsViewModel.songs.collectAsState()
     val albums by songsViewModel.albums.collectAsState()
 
@@ -149,12 +157,29 @@ fun SongsScreen(
     }
     val requestedSongToBeDeleted by songsViewModel.requestScopedDelete.collectAsState(null)
 
-    var selectedTabIndex by rememberSaveable { mutableIntStateOf(Tabs.Songs.ordinal) }
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(MusicTab.Songs.ordinal) }
+
+    val search by songsViewModel.query.collectAsState()
+    var isSearchVisible by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    var searchHasFocus by remember { mutableStateOf(false) }
+
+    fun clearSearchFocus() {
+        focusManager.clearFocus()
+    }
+
+    fun onTabClick(tab: MusicTab) {
+        clearSearchFocus()
+        selectedTabIndex = tab.ordinal
+    }
 
     fun playSong(song: Song) {
-        val songIndex = songs.indexOf(song)
-        val nextSongs = songs.subList(songIndex, songs.size)
-        val prevSongs = songs.subList(0, songIndex)
+        clearSearchFocus()
+        songsViewModel.resetSearch()
+        val songIndex = allSongs.indexOf(song)
+        val nextSongs = allSongs.subList(songIndex, songs.size)
+        val prevSongs = allSongs.subList(0, songIndex)
         val queue = nextSongs + prevSongs
         playerViewModel.apply {
             setQueue(queue)
@@ -163,7 +188,16 @@ fun SongsScreen(
     }
 
     fun deleteSong(song: Song) {
+        clearSearchFocus()
         songsViewModel.tryDeleteSongFile(context, song)
+    }
+
+    fun toggleSearch() {
+        onTabClick(MusicTab.Songs)
+        isSearchVisible = !isSearchVisible
+        if (isSearchVisible) {
+            focusRequester.requestFocus()
+        } else clearSearchFocus()
     }
 
     LaunchedEffect(requestedSongToBeDeleted) {
@@ -190,39 +224,56 @@ fun SongsScreen(
         ) {
             TabsLayout(
                 selectedTabIndex = selectedTabIndex,
-                onTabChange = { tab -> selectedTabIndex = tab.ordinal },
-                modifier = Modifier.weight(1F)
-            )
-
-            VerticalDivider(
-                thickness = 1.dp,
-                modifier = Modifier.height(30.dp)
-            )
-
-            Box(
+                onTabChange = ::onTabClick,
+                isCompact = isSearchVisible,
                 modifier = Modifier
-                    .padding(horizontal = PaddingHalf)
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(PaddingHalf))
-                    .clickable { }
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = null,
-                    modifier = Modifier.align(Alignment.Center)
+                    .then(if (isSearchVisible) Modifier.width(80.dp) else Modifier.weight(1F))
+            )
+
+            if (selectedTabIndex == MusicTab.Songs.ordinal) {
+                VerticalDivider(
+                    thickness = 1.dp,
+                    modifier = Modifier.height(30.dp)
                 )
+
+                Row(
+                    modifier = Modifier
+                        .then(if (isSearchVisible) Modifier.weight(1f) else Modifier)
+                        .height(44.dp),
+                ) {
+                    if (isSearchVisible) Spacer(modifier = Modifier.width(PaddingCompact))
+
+                    SearchField(
+                        search = search,
+                        onSearchChange = songsViewModel::onSearch,
+                        isVisible = isSearchVisible,
+                        onVisibilityChange = { visible -> isSearchVisible = visible },
+                        focusRequester = focusRequester,
+                        onFocusStateChange = { hasFocus -> searchHasFocus = hasFocus }
+                    )
+
+                    SearchButton(::toggleSearch)
+                }
             }
         }
 
         if (songs.isEmpty()) {
-            NoInfoUi(Tabs.entries[selectedTabIndex])
+            NoInfoUi(MusicTab.entries[selectedTabIndex])
         } else {
-            if (selectedTabIndex == Tabs.Songs.ordinal) {
+            if (selectedTabIndex == MusicTab.Songs.ordinal) {
+                val listState = rememberLazyListState()
+
+                LaunchedEffect(listState) {
+                    snapshotFlow { listState.firstVisibleItemScrollOffset }
+                        .collect { offset -> clearSearchFocus() }
+                }
+
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1F),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    state = listState
                 ) {
                     itemsIndexed(
                         items = songs,
@@ -238,12 +289,11 @@ fun SongsScreen(
                     }
                 }
             } else {
-
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(160.dp),
                     horizontalArrangement = Arrangement.spacedBy(PaddingCompact),
                     verticalArrangement = Arrangement.spacedBy(PaddingCompact),
-                    contentPadding = PaddingValues(PaddingCompact)
+                    contentPadding = PaddingValues(PaddingCompact),
                 ) {
 
                     items(
@@ -264,10 +314,75 @@ fun SongsScreen(
 }
 
 @Composable
-private fun ColumnScope.NoInfoUi(selectedTab: Tabs) {
+private fun RowScope.SearchButton(onSearchToggle: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .padding(horizontal = PaddingHalf)
+            .size(44.dp)
+            .clip(RoundedCornerShape(PaddingHalf))
+            .clickable { onSearchToggle() }
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Search,
+            contentDescription = null,
+            modifier = Modifier.align(Alignment.Center)
+        )
+    }
+}
+
+@Composable
+private fun RowScope.SearchField(
+    search: String,
+    onSearchChange: (String) -> Unit,
+    isVisible: Boolean,
+    onVisibilityChange: (Boolean) -> Unit,
+    focusRequester: FocusRequester,
+    onFocusStateChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BasicTextField(
+        value = search,
+        onValueChange = onSearchChange,
+        singleLine = true,
+        modifier = modifier
+            .then(if (isVisible) Modifier.weight(1f) else Modifier.width(0.dp))
+            .focusRequester(focusRequester)
+            .onFocusChanged { focusState ->
+                onFocusStateChange(focusState.isFocused)
+                if (!focusState.isFocused) {
+                    onVisibilityChange(false)
+                }
+            },
+        textStyle = LocalTextStyle.current.copy(
+            fontFamily = QuicksandFontFamily,
+            color = Color.Unspecified,
+            fontSize = 14.sp
+        ),
+        decorationBox = { innerTextField ->
+            Box(
+                modifier = Modifier
+                    .height(44.dp)
+                    .background(Color.Transparent, RoundedCornerShape(0.dp))
+                    .padding(horizontal = 0.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                if (search.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.search),
+                        color = Color.Gray
+                    )
+                }
+                innerTextField()
+            }
+        }
+    )
+}
+
+@Composable
+private fun ColumnScope.NoInfoUi(selectedTab: MusicTab) {
     @StringRes val noInfoTextResId = when(selectedTab) {
-        Tabs.Songs -> R.string.where_the_songs_at
-        Tabs.Albums -> R.string.where_the_albums_at
+        MusicTab.Songs -> R.string.where_the_songs_at
+        MusicTab.Albums -> R.string.where_the_albums_at
     }
     val contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .7f)
 
@@ -564,9 +679,12 @@ private fun SongTitle(text: String, modifier: Modifier = Modifier) {
 @Composable
 private fun TabsLayout(
     selectedTabIndex: Int,
-    onTabChange: (Tabs) -> Unit,
+    onTabChange: (MusicTab) -> Unit,
+    isCompact: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val tabs = if (isCompact) listOf(MusicTab.Songs) else MusicTab.entries
+
     TabRow(
         selectedTabIndex = selectedTabIndex,
         containerColor = Color.Transparent,
@@ -600,17 +718,28 @@ private fun TabsLayout(
         divider = { },
         modifier = modifier
     ) {
-        Tabs.entries.forEach { tab ->
+        tabs.forEach { tab ->
             val isSelected = selectedTabIndex == tab.ordinal
             Tab(
                 selected = isSelected,
                 onClick = { onTabChange(tab) },
-            ) { Text(
-                text = tab.name,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.padding(PaddingDefault),
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-            ) }
+            ) {
+                if (isCompact) {
+                    Icon(
+                        imageVector = tab.icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(PaddingDefault),
+                    )
+                } else {
+                    Text(
+                        text = tab.name,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(PaddingDefault),
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+            }
         }
     }
 }

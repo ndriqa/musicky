@@ -17,11 +17,13 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.Album
+import com.ndriqa.musicky.core.util.extensions.contains
 import com.ndriqa.musicky.core.util.extensions.simpleLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -32,8 +34,15 @@ class SongsViewModel @Inject constructor(
     @ApplicationContext context: Context
 ): ViewModel() {
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
+    private val _searchText = MutableStateFlow("")
 
-    val songs = _songs.asStateFlow()
+    val query = _searchText.asStateFlow()
+
+    val allSongs = _songs.asStateFlow()
+    val songs = combine(_songs, _searchText) { allSongs, query ->
+        allSongs.filter { it.contains(query) }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     val albums = _songs.map { allSongs ->
         allSongs
             .groupBy { it.album }
@@ -140,6 +149,14 @@ class SongsViewModel @Inject constructor(
             e.printStackTrace()
             false
         }
+    }
+
+    fun onSearch(query: String) {
+        _searchText.value = query
+    }
+
+    fun resetSearch() {
+        _searchText.value = ""
     }
 
     fun clearDeleteRequest() {

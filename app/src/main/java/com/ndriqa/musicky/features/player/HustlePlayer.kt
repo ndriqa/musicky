@@ -118,7 +118,7 @@ fun HustlePlayer(
         ) { expanded ->
             val sizeModifier =
                 if (!expanded) Modifier
-                    .size(52.dp)
+                    .size(60.dp)
                 else Modifier
                     .fillMaxSize()
                     .padding(start = offsetPadding, top = offsetPadding)

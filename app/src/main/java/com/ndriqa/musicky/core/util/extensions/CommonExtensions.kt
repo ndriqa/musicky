@@ -4,6 +4,7 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.lifecycle.ViewModel
+import com.ndriqa.musicky.core.data.Song
 import timber.log.Timber
 import java.time.ZonedDateTime
 import java.util.Locale
@@ -44,4 +45,10 @@ fun ZonedDateTime.formatDateTime(): String {
 
 fun ViewModel.simpleLog(text: String) {
     Timber.tag(this::class.java.simpleName).d(text)
+}
+
+fun Song.contains(query: String): Boolean {
+    return title.contains(query, ignoreCase = true)
+            || artist.contains(query, ignoreCase = true)
+            || (album?.contains(query, ignoreCase = true) == true)
 }
