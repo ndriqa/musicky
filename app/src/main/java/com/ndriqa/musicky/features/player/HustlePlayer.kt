@@ -4,9 +4,11 @@ import android.net.Uri
 import android.widget.ProgressBar
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -48,6 +50,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -237,11 +240,20 @@ private fun ColumnScope.SongControls(
         ) {
             val currentPosition = playState.currentPosition
             val maxPosition = playState.currentSong?.duration ?: currentPosition
+            val progress = remember { Animatable(0f) }
+
+            LaunchedEffect(currentPosition) {
+                progress.animateTo(
+                    targetValue = currentPosition.toFloat() / maxPosition,
+                    animationSpec = tween(durationMillis = 300)
+                )
+            }
 
             Text(
                 text = currentPosition.toFormattedTime(),
                 fontFamily = SpaceMonoFontFamily
             )
+
             Box(
                 modifier = Modifier
                     .weight(1F)
@@ -264,7 +276,7 @@ private fun ColumnScope.SongControls(
                         .fillMaxWidth()
                         .clip(CircleShape)
                         .align(Alignment.Center),
-                    progress = { currentPosition.toFloat() / maxPosition },
+                    progress = { progress.value },
                     trackColor = MaterialTheme.colorScheme.primaryContainer,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     strokeCap = StrokeCap.Butt,
@@ -272,6 +284,7 @@ private fun ColumnScope.SongControls(
                     drawStopIndicator = { } // disabling the stop dot thingy
                 )
             }
+
             Text(
                 text = maxPosition.toFormattedTime(),
                 fontFamily = SpaceMonoFontFamily

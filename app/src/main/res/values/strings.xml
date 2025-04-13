@@ -7,5 +7,11 @@
     <string name="delete_song">Delete song</string>
     <string name="where_the_songs_at">Where the songs at?</string>
     <string name="where_the_albums_at">Where the albums at?</string>
+    <string name="unknown">Unknown</string>
+    <string name="play_album">Play Album</string>
 
+    <plurals name="num_songs">
+        <item quantity="one">%d song</item>
+        <item quantity="other">%d songs</item>
+    </plurals>
 </resources>

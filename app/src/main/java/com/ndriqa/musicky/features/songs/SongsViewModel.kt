@@ -15,10 +15,15 @@ import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
+import com.ndriqa.musicky.R
+import com.ndriqa.musicky.core.data.Album
 import com.ndriqa.musicky.core.util.extensions.simpleLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -27,7 +32,16 @@ class SongsViewModel @Inject constructor(
     @ApplicationContext context: Context
 ): ViewModel() {
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
+
     val songs = _songs.asStateFlow()
+    val albums = _songs.map { allSongs ->
+        allSongs
+            .groupBy { it.album }
+            .map { Album(
+                name = it.key ?: context.getString(R.string.unknown),
+                songs = it.value
+            ) }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val requestScopedDelete = MutableSharedFlow<Uri?>()
 

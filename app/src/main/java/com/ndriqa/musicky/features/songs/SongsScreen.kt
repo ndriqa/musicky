@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,7 +18,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,17 +31,28 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -55,11 +70,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.LinearGradient
+import androidx.compose.ui.graphics.LinearGradientShader
+import androidx.compose.ui.graphics.Shader
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -76,6 +104,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.toUri
 import com.ndriqa.musicky.R
+import com.ndriqa.musicky.core.data.Album
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.util.extensions.findActivity
 import com.ndriqa.musicky.core.util.extensions.toFormattedTime
@@ -85,7 +114,9 @@ import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeCompact
 import com.ndriqa.musicky.ui.theme.PaddingCompact
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 import com.ndriqa.musicky.ui.theme.PaddingHalf
+import com.ndriqa.musicky.ui.theme.PaddingMini
 import com.ndriqa.musicky.ui.theme.PaddingNano
+import com.ndriqa.musicky.ui.theme.QuicksandFontFamily
 
 private const val DELIMITER = " - "
 
@@ -105,6 +136,8 @@ fun SongsScreen(
     playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
     val songs by songsViewModel.songs.collectAsState()
+    val albums by songsViewModel.albums.collectAsState()
+
     val currentPlayState by playerViewModel.playingState.collectAsState()
     val currentPlayingSong by remember { derivedStateOf { currentPlayState.currentSong } }
 
@@ -144,6 +177,14 @@ fun SongsScreen(
     }
 
     Column {
+        fun onAlbumPlay(album: Album) {
+            playerViewModel.apply {
+                stop()
+                setQueue(album.songs)
+                play()
+            }
+        }
+
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -176,23 +217,46 @@ fun SongsScreen(
         if (songs.isEmpty()) {
             NoInfoUi(Tabs.entries[selectedTabIndex])
         } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1F),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                itemsIndexed(
-                    items = songs,
-                    key = { _, song -> song.id }
-                ) { index, song ->
-                    SongItem(
-                        song = song,
-                        isPlaying = currentPlayingSong == song,
-                        onSongTap = ::playSong,
-                        onAddNextInQueue = {},
-                        onDeleteSong = ::deleteSong
-                    )
+            if (selectedTabIndex == Tabs.Songs.ordinal) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1F),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    itemsIndexed(
+                        items = songs,
+                        key = { _, song -> song.id }
+                    ) { index, song ->
+                        SongItem(
+                            song = song,
+                            isPlaying = currentPlayingSong == song,
+                            onSongTap = ::playSong,
+                            onAddNextInQueue = {},
+                            onDeleteSong = ::deleteSong
+                        )
+                    }
+                }
+            } else {
+
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(160.dp),
+                    horizontalArrangement = Arrangement.spacedBy(PaddingCompact),
+                    verticalArrangement = Arrangement.spacedBy(PaddingCompact),
+                    contentPadding = PaddingValues(PaddingCompact)
+                ) {
+
+                    items(
+                        items = albums,
+                        key = { album -> album.name },
+                    ) { album ->
+                        AlbumItem(
+                            album = album,
+                            isPlaying = false,
+                            onAlbumPlay = ::onAlbumPlay,
+                            onAlbumToQueue = {  },
+                        )
+                    }
                 }
             }
         }
@@ -229,6 +293,138 @@ private fun ColumnScope.NoInfoUi(selectedTab: Tabs) {
             fontSize = 20.sp,
             color = contentColor
         )
+    }
+}
+
+@Composable
+private fun AlbumItem(
+    album: Album,
+    isPlaying: Boolean,
+    onAlbumPlay: (Album) -> Unit,
+    onAlbumToQueue: (Album) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val contentBackground =
+        if (isPlaying) MaterialTheme.colorScheme.primaryContainer
+        else MaterialTheme.colorScheme.onPrimaryContainer
+    val contentTint =
+        if (isPlaying) MaterialTheme.colorScheme.onPrimaryContainer
+        else MaterialTheme.colorScheme.primary
+
+    var isFlipped by rememberSaveable { mutableStateOf(false) }
+    val rotationY by animateFloatAsState(
+        targetValue = if (isFlipped) 180f else 0f,
+        label = "flipAnimation"
+    )
+    val cameraDistance = 12f * LocalDensity.current.density
+
+    val albumShape = RoundedCornerShape(PaddingCompact)
+    val fallbackIcon = rememberVectorPainter(Icons.Rounded.MusicNote)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(albumShape)
+            .clickable(onClick = { isFlipped = !isFlipped })
+            .graphicsLayer {
+                this.rotationY = rotationY
+                this.cameraDistance = cameraDistance
+            }
+    ) {
+        val imageRequest = ImageRequest.Builder(context)
+            .data(album.artworkUri)
+            .crossfade(true)
+            .diskCachePolicy(CachePolicy.ENABLED) // enable disk caching
+            .memoryCachePolicy(CachePolicy.ENABLED) // enable memory caching
+            .build()
+
+        val textStyle = TextStyle(
+            fontFamily = QuicksandFontFamily,
+            shadow = Shadow(
+                color = contentBackground,
+                offset = Offset(2f, 2f),
+                blurRadius = 4f
+            )
+        )
+
+        if (rotationY < 90) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = imageRequest,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    fallback = fallbackIcon
+                )
+
+                Column(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(contentBackground, Color.Transparent),
+                                startY = Float.POSITIVE_INFINITY,
+                                endY = 0f,
+                            )
+                        )
+                        .padding(PaddingCompact),
+                    verticalArrangement = Arrangement.spacedBy(PaddingMini, alignment = Alignment.Bottom),
+                ) {
+                    Text(
+                        text = album.name,
+                        fontWeight = FontWeight.Bold,
+                        color = contentTint,
+                        style = textStyle
+                    )
+
+                    Text(
+                        text = pluralStringResource(R.plurals.num_songs, album.size, album.size),
+                        color = contentTint,
+                        style = textStyle
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { this.rotationY = 180f },
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    items(
+                        items = album.songs,
+                        key = { song -> song.id }
+                    ) { song ->
+                        ListItem(
+                            headlineContent = { Text(
+                                text = song.title,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            ) },
+                            supportingContent = { Text(
+                                text = song.artist,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            ) },
+                        )
+                    }
+                }
+
+                HorizontalDivider(thickness = 1.dp)
+                Button(onClick = { onAlbumPlay(album) }) {
+                    Text(stringResource(R.string.play_album))
+                }
+            }
+        }
     }
 }
 
