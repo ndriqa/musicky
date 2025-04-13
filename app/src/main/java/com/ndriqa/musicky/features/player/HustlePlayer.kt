@@ -1,20 +1,16 @@
 package com.ndriqa.musicky.features.player
 
 import android.net.Uri
-import android.widget.ProgressBar
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -46,9 +42,7 @@ import androidx.compose.material3.FloatingActionButtonDefaults.elevation
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -67,21 +61,17 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.Song
-import com.ndriqa.musicky.core.util.extensions.debugBorder
 import com.ndriqa.musicky.core.util.extensions.toFormattedTime
 import com.ndriqa.musicky.ui.theme.DefaultPlayerElevation
 import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeBig
-import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeCompact
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 import com.ndriqa.musicky.ui.theme.PaddingHalf
 import com.ndriqa.musicky.ui.theme.PaddingMini
-import com.ndriqa.musicky.ui.theme.PaddingNano
 import com.ndriqa.musicky.ui.theme.SpaceMonoFontFamily
 import kotlin.random.Random
 

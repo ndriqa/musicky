@@ -7,7 +7,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -35,7 +34,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -178,7 +176,7 @@ fun SongsScreen(
         clearSearchFocus()
         songsViewModel.resetSearch()
         val songIndex = allSongs.indexOf(song)
-        val nextSongs = allSongs.subList(songIndex, songs.size)
+        val nextSongs = allSongs.subList(songIndex, allSongs.size)
         val prevSongs = allSongs.subList(0, songIndex)
         val queue = nextSongs + prevSongs
         playerViewModel.apply {
@@ -230,30 +228,32 @@ fun SongsScreen(
                     .then(if (isSearchVisible) Modifier.width(80.dp) else Modifier.weight(1F))
             )
 
-            if (selectedTabIndex == MusicTab.Songs.ordinal) {
-                VerticalDivider(
-                    thickness = 1.dp,
-                    modifier = Modifier.height(30.dp)
+            VerticalDivider(
+                thickness = 1.dp,
+                modifier = Modifier.height(30.dp)
+            )
+
+            Row(
+                modifier = Modifier
+                    .then(if (isSearchVisible) Modifier.weight(1f) else Modifier)
+                    .height(44.dp),
+            ) {
+                if (isSearchVisible) Spacer(modifier = Modifier.width(PaddingCompact))
+
+                SearchField(
+                    search = search,
+                    onSearchChange = songsViewModel::onSearch,
+                    isVisible = isSearchVisible,
+                    onVisibilityChange = { visible -> isSearchVisible = visible },
+                    focusRequester = focusRequester,
+                    onFocusStateChange = { hasFocus -> searchHasFocus = hasFocus },
+                    enabled = selectedTabIndex == MusicTab.Songs.ordinal
                 )
 
-                Row(
-                    modifier = Modifier
-                        .then(if (isSearchVisible) Modifier.weight(1f) else Modifier)
-                        .height(44.dp),
-                ) {
-                    if (isSearchVisible) Spacer(modifier = Modifier.width(PaddingCompact))
-
-                    SearchField(
-                        search = search,
-                        onSearchChange = songsViewModel::onSearch,
-                        isVisible = isSearchVisible,
-                        onVisibilityChange = { visible -> isSearchVisible = visible },
-                        focusRequester = focusRequester,
-                        onFocusStateChange = { hasFocus -> searchHasFocus = hasFocus }
-                    )
-
-                    SearchButton(::toggleSearch)
-                }
+                SearchButton(
+                    onSearchToggle = ::toggleSearch,
+                    enabled = selectedTabIndex == MusicTab.Songs.ordinal
+                )
             }
         }
 
@@ -314,18 +314,20 @@ fun SongsScreen(
 }
 
 @Composable
-private fun RowScope.SearchButton(onSearchToggle: () -> Unit) {
+private fun RowScope.SearchButton(onSearchToggle: () -> Unit, enabled: Boolean) {
+    val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
     Box(
         modifier = Modifier
             .padding(horizontal = PaddingHalf)
             .size(44.dp)
             .clip(RoundedCornerShape(PaddingHalf))
-            .clickable { onSearchToggle() }
+            .then(if (enabled) Modifier.clickable { onSearchToggle() } else Modifier)
     ) {
         Icon(
             imageVector = Icons.Rounded.Search,
             contentDescription = null,
-            modifier = Modifier.align(Alignment.Center)
+            modifier = Modifier.align(Alignment.Center),
+            tint = contentColor.copy(alpha = if (enabled) 1f else 0.3f)
         )
     }
 }
@@ -338,12 +340,14 @@ private fun RowScope.SearchField(
     onVisibilityChange: (Boolean) -> Unit,
     focusRequester: FocusRequester,
     onFocusStateChange: (Boolean) -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier
 ) {
     BasicTextField(
         value = search,
         onValueChange = onSearchChange,
         singleLine = true,
+        enabled = enabled,
         modifier = modifier
             .then(if (isVisible) Modifier.weight(1f) else Modifier.width(0.dp))
             .focusRequester(focusRequester)

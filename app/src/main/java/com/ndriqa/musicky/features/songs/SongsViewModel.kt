@@ -1,33 +1,31 @@
 package com.ndriqa.musicky.features.songs
 
-import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import androidx.lifecycle.ViewModel
-import com.ndriqa.musicky.core.data.Song
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import javax.inject.Inject
 import androidx.core.net.toUri
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.Album
+import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.util.extensions.contains
 import com.ndriqa.musicky.core.util.extensions.simpleLog
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import timber.log.Timber
+import javax.inject.Inject
 
 @HiltViewModel
 class SongsViewModel @Inject constructor(
