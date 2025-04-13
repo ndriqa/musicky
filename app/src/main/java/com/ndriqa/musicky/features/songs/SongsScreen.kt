@@ -12,6 +12,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,7 +35,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,13 +43,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
@@ -80,6 +80,8 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -93,6 +95,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -509,38 +512,78 @@ private fun AlbumItem(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .border(
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        width = 1.dp,
+                        shape = albumShape
+                    )
                     .graphicsLayer { this.rotationY = 180f },
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                val nestedScrollConnection = remember {
+                    object : NestedScrollConnection {
+                        override suspend fun onPreFling(available: Velocity): Velocity {
+                            return available
+                        }
+                    }
+                }
+
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
+                        .nestedScroll(nestedScrollConnection),
+                    contentPadding = PaddingValues(PaddingHalf),
+                    verticalArrangement = Arrangement.spacedBy(PaddingMini)
                 ) {
-                    items(
+                    itemsIndexed(
                         items = album.songs,
-                        key = { song -> song.id }
-                    ) { song ->
-                        ListItem(
-                            headlineContent = { Text(
+                        key = { _, song -> song.id }
+                    ) { index, song ->
+                        val backgroundColor = MaterialTheme.colorScheme.primary.copy(
+                            alpha = 0.7f - (index % 2) * 0.4f
+                        )
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    color = backgroundColor,
+                                    shape = RoundedCornerShape(PaddingMini)
+                                )
+                                .padding(horizontal = PaddingMini, vertical = PaddingNano),
+                            verticalArrangement = Arrangement.spacedBy(PaddingNano),
+                        ) {
+                            Text(
                                 text = song.title,
-                                fontSize = 13.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            ) },
-                            supportingContent = { Text(
-                                text = song.artist,
                                 fontSize = 11.sp,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            ) },
-                        )
+                                overflow = TextOverflow.Ellipsis,
+                                lineHeight = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = song.artist,
+                                fontSize = 9.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                lineHeight = 10.sp
+                            )
+                        }
                     }
                 }
 
-                HorizontalDivider(thickness = 1.dp)
+                HorizontalDivider(
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
+                )
                 Button(onClick = { onAlbumPlay(album) }) {
-                    Text(stringResource(R.string.play_album))
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+//                    Text(stringResource(R.string.play_album))
                 }
             }
         }
