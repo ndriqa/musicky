@@ -737,7 +737,7 @@ private fun TabsLayout(
                     )
                 } else {
                     Text(
-                        text = tab.name,
+                        text = tab.title,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.padding(PaddingDefault),
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
