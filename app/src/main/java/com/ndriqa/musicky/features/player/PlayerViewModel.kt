@@ -1,12 +1,17 @@
 package com.ndriqa.musicky.features.player
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.media.MediaPlayer
 import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.Song
+import com.ndriqa.musicky.core.services.PlayerService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -26,154 +31,113 @@ import javax.inject.Inject
 class PlayerViewModel @Inject constructor(
     @ApplicationContext context: Context
 ): ViewModel() {
+    private val playerUpdateReceiver = object : BroadcastReceiver() {
+
+        override fun onReceive(context: Context?, intent: Intent?) {
+            intent ?: return
+            val playingState = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(PlayerService.EXTRA_PLAYING_STATE, PlayingState::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra<PlayingState>(PlayerService.EXTRA_PLAYING_STATE)
+            }
+
+            playingState?.let { newState -> _playingState.update { newState } }
+        }
+    }
+
     private val _playingState = MutableStateFlow(PlayingState())
     val playingState: StateFlow<PlayingState> = _playingState.asStateFlow()
 
     private val _queue = MutableStateFlow<List<Song>>(emptyList())
     val queue: StateFlow<List<Song>> = _queue.asStateFlow()
 
-    private val _currentIndex = _playingState
-        .map {
-            it.currentSong
-                ?.let { _queue.value.indexOf(it) }
-                ?: -1
+    fun registerPlayerUpdates(context: Context) {
+        val filter = IntentFilter(PlayerService.ACTION_BROADCAST_UPDATE)
+        ContextCompat.registerReceiver(
+            /* context = */ context,
+            /* receiver = */ playerUpdateReceiver,
+            /* filter = */ filter,
+            /* flags = */ ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    fun unregisterPlayerUpdates(context: Context) {
+        context.unregisterReceiver(playerUpdateReceiver)
+    }
+
+    fun playPause(context: Context) {
+        val isPlaying = _playingState.value.isPlaying
+        return if (isPlaying) pause(context) else resume(context)
+    }
+
+    fun pause(context: Context) {
+        Intent(context, PlayerService::class.java)
+            .apply { action = PlayerService.ACTION_PAUSE }
+            .also { context.startService(it) }
+    }
+
+    fun resume(context: Context) {
+        Intent(context, PlayerService::class.java)
+            .apply { action = PlayerService.ACTION_RESUME }
+            .also { context.startService(it) }
+    }
+
+    fun next(context: Context) {
+        Intent(context, PlayerService::class.java)
+            .apply { action = PlayerService.ACTION_NEXT }
+            .also { context.startService(it) }
+    }
+
+    fun previous(context: Context) {
+        Intent(context, PlayerService::class.java)
+            .apply { action = PlayerService.ACTION_PREVIOUS }
+            .also { context.startService(it) }
+    }
+
+    fun play(context: Context, song: Song? = null) {
+        val selectedSong = song ?: _queue.value.firstOrNull() ?: return
+
+        val intent = Intent(context, PlayerService::class.java).apply {
+            action = PlayerService.ACTION_PLAY
+            putExtra(PlayerService.EXTRA_SONG_PATH, selectedSong.data)
+            putParcelableArrayListExtra(PlayerService.EXTRA_QUEUE, ArrayList(_queue.value))
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, -1)
 
-    private var progressJob: Job? = null
-    private var player: MediaPlayer? = null
-
-    init {
-        initMediaPlayer(context)
+        ContextCompat.startForegroundService(context, intent)
     }
 
-    private fun initMediaPlayer(context: Context) {
-        player = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            MediaPlayer(context)
-        } else MediaPlayer()
-
-        player?.apply {
-            setOnCompletionListener { next() }
-            setOnPreparedListener { startProgressUpdates() }
-        }
+    fun seekToProgress(context: Context, progress: Float) {
+        val currentMax = _playingState.value.currentSong?.duration ?: 0
+        seekTo(context, positionMillis = (currentMax * progress).toInt())
     }
 
-    private fun startProgressUpdates() {
-        stopProgressUpdates()
-
-        progressJob = viewModelScope.launch {
-            while (isActive) {
-                val current = player?.currentPosition?.toLong() ?: 0L
-                _playingState.update { it.copy(currentPosition = current) }
-                delay(1000L)
-            }
-        }
-    }
-
-    private fun stopProgressUpdates() {
-        progressJob?.cancel()
-        progressJob = null
-    }
-
-    fun play(song: Song? = null): Boolean {
-        val song = song ?: _queue.value.first()
-        val mediaPlayer = player ?: return false
-
-        return try {
-            mediaPlayer.reset()
-            mediaPlayer.setDataSource(song.data)
-            mediaPlayer.prepare()
-            mediaPlayer.start()
-
-            _playingState.update {
-                it.copy(
-                    currentSong = song,
-                    isPlaying = true
-                )
-            }
-            true
-        } catch (e: Exception) {
-            e.printStackTrace()
-            _playingState.update {
-                it.copy(
-                    isPlaying = false,
-                    currentSong = null
-                )
-            }
-            false
-        }
-    }
-
-    fun stop() {
-        pausePlaying()
-        player?.reset()
-        _playingState.value = PlayingState()
-        _queue.value = emptyList()
-        stopProgressUpdates()
-    }
-
-    fun togglePlayPause() {
-        val mediaPlayer = player ?: return
-        if (mediaPlayer.isPlaying) pausePlaying()
-        else resumePlaying()
-    }
-
-    fun resumePlaying() {
-        player?.let { mediaPlayer ->
-            mediaPlayer.start()
-            _playingState.update { it.copy(isPlaying = true) }
-        }
-    }
-
-    fun pausePlaying() {
-        player?.pause()
-        _playingState.update { it.copy(isPlaying = false) }
-    }
-
-    fun seekTo(position: Long) {
-        player?.seekTo(position, MediaPlayer.SEEK_CLOSEST)
-    }
-
-    fun seekToProgress(progress: Float) {
-        val currentSong = _playingState.value.currentSong ?: return
-        val seekPosition = currentSong.duration * progress
-        seekTo(seekPosition.toLong())
-    }
-
-    fun next() {
-        if (_queue.value.isEmpty()) return
-        val trueNextIndex = _currentIndex.value + 1
-        val nextIndex = if (trueNextIndex > _queue.value.lastIndex) 0 else trueNextIndex
-        if (nextIndex != _currentIndex.value) {
-            val nextSong = _queue.value[nextIndex]
-            val playStarted = play(nextSong)
-            if (!playStarted) {
-                _queue.value = _queue.value.filterNot { it.id == nextSong.id }
-                next()
-            }
-        }
-    }
-
-    fun previous() {
-        if (_queue.value.isEmpty()) return
-        val truePrevIndex = _currentIndex.value - 1
-        val prevIndex = if (truePrevIndex < 0) _queue.value.lastIndex else truePrevIndex
-        if (prevIndex != _currentIndex.value) {
-            val prevSong = _queue.value[prevIndex]
-            val playStarted = play(prevSong)
-            if (!playStarted) {
-                _queue.value = _queue.value.filterNot { it.id == prevSong.id }
-                previous()
-            }
-        }
+    fun seekTo(context: Context, positionMillis: Int) {
+        Intent(context, PlayerService::class.java)
+            .apply {
+                action = PlayerService.ACTION_SEEK_TO
+                putExtra(PlayerService.EXTRA_SEEK_POSITION, positionMillis)
+            }.also { context.startService(it) }
     }
 
     fun setQueue(songs: List<Song>) {
         _queue.value = songs
     }
 
-    fun release() {
-        player?.release()
-        player = null
+    private fun handlePlayerUpdate(intent: Intent) {
+        val path = intent.getStringExtra(PlayerService.EXTRA_SONG_PATH) ?: return
+        val isPlaying = intent.getBooleanExtra(PlayerService.EXTRA_IS_PLAYING, false)
+        val position = intent.getIntExtra(PlayerService.EXTRA_POSITION, 0)
+        val duration = intent.getIntExtra(PlayerService.EXTRA_DURATION, 0)
+
+        val currentSong = queue.value.find { it.data == path } ?: return
+
+        _playingState.update {
+            it.copy(
+                currentSong = currentSong,
+                isPlaying = isPlaying,
+                currentPosition = position.toLong()
+            )
+        }
     }
 }

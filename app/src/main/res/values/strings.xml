@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Musicky</string>
     <string name="ndriqa_developer_id" translatable="false">4859190083085293063</string>
 
@@ -9,7 +9,24 @@
     <string name="where_the_albums_at">Where the albums at?</string>
     <string name="unknown">Unknown</string>
     <string name="play_album">Play Album</string>
-    <string name="search">Search...</string>
+    <string name="search" tools:ignore="TypographyEllipsis">Search...</string>
+
+    <string name="enable_notifications">Enable Notifications</string>
+    <string name="enable_notification_message">Musicky needs permission to send you media playback controls and alerts while the app runs in the background.</string>
+
+    <string name="allow">Allow</string>
+    <string name="deny">Deny</string>
+    <string name="need_the_permission_to_load_songs">Need the permission to load songs</string>
+    <string name="enable_media">Allow access to songs</string>
+    <string name="enable_media_message">Musicky needs access to your media files to load your local songs and display them for playback.</string>
+
+    <string name="missing_permissions_message">Musicky needs permission to access your media so it can load your songs.\n\nTap \'Retry\' to request permission again, or enable it manually from settings.</string>
+    <string name="missing_media_permission">Missing Media Permission</string>
+    <string name="missing_notification_permission_message">Musicky uses notifications to show the currently playing song in your status bar.\n\nTap \'Retry\' to allow it again, or turn it on manually from settings</string>
+    <string name="missing_notification_permission">Missing Notification Permission</string>
+
+
+    <string name="retry">Retry</string>
 
     <plurals name="num_songs">
         <item quantity="one">%d song</item>

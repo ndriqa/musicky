@@ -2,6 +2,7 @@ package com.ndriqa.musicky.app
 
 import android.app.Application
 import com.ndriqa.musicky.BuildConfig
+import com.ndriqa.musicky.core.util.notifications.NotificationHelper
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 
@@ -21,7 +22,7 @@ class NdriqaApp: Application() {
     }
 
     private fun initializeNotificationChannels() {
-//        NotificationHelper.createNotificationChannels(this)
+        NotificationHelper.createNotificationChannels(this)
     }
 
     private fun initializeFirebase() {

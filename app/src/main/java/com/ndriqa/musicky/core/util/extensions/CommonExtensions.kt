@@ -1,5 +1,9 @@
 package com.ndriqa.musicky.core.util.extensions
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -51,4 +55,15 @@ fun Song.contains(query: String): Boolean {
     return title.contains(query, ignoreCase = true)
             || artist.contains(query, ignoreCase = true)
             || (album?.contains(query, ignoreCase = true) == true)
+}
+
+fun Uri.loadAsBitmap(context: Context): Bitmap? {
+    return try {
+        context.contentResolver.openInputStream(this)?.use { input ->
+            BitmapFactory.decodeStream(input)
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
 }

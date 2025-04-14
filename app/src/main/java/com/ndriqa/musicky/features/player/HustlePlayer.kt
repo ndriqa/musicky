@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -80,6 +81,7 @@ fun HustlePlayer(
     modifier: Modifier = Modifier,
     playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     var isExpanded by remember { mutableStateOf(false) }
     val playerShape by remember { derivedStateOf {
         if (isExpanded) RoundedCornerShape(PaddingDefault)
@@ -141,10 +143,10 @@ fun HustlePlayer(
                         SongEqualizer(playState)
                         SongControls(
                             playState = playState,
-                            onPlayPauseClicked = playerViewModel::togglePlayPause,
-                            onNextClicked = playerViewModel::next,
-                            onPrevClicked = playerViewModel::previous,
-                            onSeek = playerViewModel::seekToProgress
+                            onPlayPauseClicked = { playerViewModel.playPause(context) },
+                            onNextClicked = { playerViewModel.next(context) },
+                            onPrevClicked = { playerViewModel.previous(context) },
+                            onSeek = { playerViewModel.seekToProgress(context, it) }
                         )
                     } else {
                         val artworkShape = RoundedCornerShape(PaddingDefault)

@@ -1,7 +1,10 @@
 package com.ndriqa.musicky.core.data
 
 import android.net.Uri
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
+@Parcelize
 data class Song(
     val id: Long,
     val title: String,
@@ -12,4 +15,4 @@ data class Song(
     val dateModified: String,
     val data: String,   // file path or content uri
     val artworkUri: Uri? = null
-)
+): Parcelable

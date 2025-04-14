@@ -57,6 +57,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -178,14 +179,14 @@ fun SongsScreen(
     fun playSong(song: Song) {
         clearSearchFocus()
         songsViewModel.resetSearch()
+
         val songIndex = allSongs.indexOf(song)
         val nextSongs = allSongs.subList(songIndex, allSongs.size)
         val prevSongs = allSongs.subList(0, songIndex)
         val queue = nextSongs + prevSongs
-        playerViewModel.apply {
-            setQueue(queue)
-            play()
-        }
+
+        playerViewModel.setQueue(queue)
+        playerViewModel.play(context, song)
     }
 
     fun deleteSong(song: Song) {
@@ -201,6 +202,14 @@ fun SongsScreen(
         } else clearSearchFocus()
     }
 
+    DisposableEffect(Unit) {
+        playerViewModel.registerPlayerUpdates(context)
+
+        onDispose {
+            playerViewModel.unregisterPlayerUpdates(context)
+        }
+    }
+
     LaunchedEffect(requestedSongToBeDeleted) {
         requestedSongToBeDeleted?.let { uri ->
             val pendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -214,9 +223,8 @@ fun SongsScreen(
     Column {
         fun onAlbumPlay(album: Album) {
             playerViewModel.apply {
-                stop()
                 setQueue(album.songs)
-                play()
+                play(context)
             }
         }
 
