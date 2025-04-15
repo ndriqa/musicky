@@ -48,9 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,7 +70,6 @@ import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.util.extensions.toFormattedTime
 import com.ndriqa.musicky.core.util.extensions.waveformToPath
-import com.ndriqa.musicky.ui.theme.DefaultPlayerElevation
 import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeBig
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 import com.ndriqa.musicky.ui.theme.PaddingHalf
@@ -86,19 +83,16 @@ private const val MAX_BYTE_VAL = 256
 @Composable
 fun HustlePlayer(
     hasVisualizerRecordingPermission: Boolean,
+    onExpandedUpdate: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    isVisible: Boolean = false,
+    isExpanded: Boolean = false,
     playerViewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    var isExpanded by remember { mutableStateOf(false) }
-    val playerShape by remember { derivedStateOf {
-        if (isExpanded) RoundedCornerShape(PaddingDefault)
-        else CircleShape
-    } }
-
+    val playerShape = if (isExpanded) RoundedCornerShape(PaddingDefault) else CircleShape
     val playState by playerViewModel.playingState.collectAsState()
     val waveform by playerViewModel.waveform.collectAsState()
-    val isVisible by remember { derivedStateOf { playState.currentSong != null } }
     val currentSong by remember { derivedStateOf { playState.currentSong } }
 
     val averageSongEnergy by playerViewModel.averageSongEnergy.collectAsState()
@@ -107,16 +101,17 @@ fun HustlePlayer(
 
     val gestureModifier = Modifier.pointerInput(Unit) {
         detectVerticalDragGestures { change, dragAmount ->
-            isExpanded = when {
+            onExpandedUpdate(when {
                 dragAmount > 20f -> false
                 dragAmount < -20f -> true
                 else -> isExpanded
-            }
+            })
         }
     }
 
-    val offsetPadding = PaddingDefault * 2
-    val fabElevation = DefaultPlayerElevation
+    val startOffsetPadding = PaddingDefault * 2
+    val topOffsetPadding = PaddingDefault * 3
+    val fabElevation = 0.dp
 
     LaunchedEffect(currentSong) {
         playerViewModel.resetSongAverageEnergy()
@@ -129,18 +124,19 @@ fun HustlePlayer(
     }
 
     AnimatedVisibility(isVisible) {
-        AnimatedContent(
-            targetState = isExpanded,
-        ) { expanded ->
+        AnimatedContent(targetState = isExpanded) { expanded ->
             val sizeModifier =
                 if (!expanded) Modifier
                     .size(60.dp)
                 else Modifier
                     .fillMaxSize()
-                    .padding(start = offsetPadding, top = offsetPadding)
+                    .padding(
+                        start = startOffsetPadding,
+                        top = topOffsetPadding
+                    )
 
             FloatingActionButton(
-                onClick = { isExpanded = !isExpanded },
+                onClick = { onExpandedUpdate(!isExpanded) },
                 modifier = modifier
                     .then(sizeModifier)
                     .then(gestureModifier),
