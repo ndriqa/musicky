@@ -12,7 +12,6 @@ import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.services.PlayerService
 import com.ndriqa.musicky.core.services.PlayerService.Companion.VISUALIZER_WAVEFORM
-import com.ndriqa.musicky.core.util.extensions.resampleTo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -74,7 +73,7 @@ class PlayerViewModel @Inject constructor(
 
     private fun updateWaveform(waveform: ByteArray) {
         viewModelScope.launch {
-            val resampledWaveform = waveform.resampleTo(WAVEFORM_BARS)
+            val resampledWaveform = waveform //.resampleTo(WAVEFORM_BARS)
             val energyRecordings = _songEnergyRecordings.value
             val currentEnergy = resampledWaveform.map { abs(it.toInt()) }.average().toInt().toByte()
 
@@ -175,7 +174,6 @@ class PlayerViewModel @Inject constructor(
     }
 
     companion object {
-        private const val PULSE_THRESHOLD = 20
-        const val WAVEFORM_BARS = 10
+        private const val PULSE_THRESHOLD = 15
     }
 }

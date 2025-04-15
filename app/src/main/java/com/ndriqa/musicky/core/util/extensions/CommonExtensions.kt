@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import androidx.compose.ui.graphics.Path
 import androidx.lifecycle.ViewModel
 import com.ndriqa.musicky.core.data.Song
 import timber.log.Timber
@@ -77,4 +78,29 @@ fun ByteArray.resampleTo(size: Int): ByteArray {
         val end = ((i + 1) * step).toInt().coerceAtMost(this.size)
         this.slice(start until end).average().toInt().toByte()
     }
+}
+
+fun ByteArray.waveformToPath(
+    width: Float,
+    height: Float
+): Path {
+    val path = Path()
+    if (isEmpty()) return path
+
+    val centerY = height / 2f
+    val xStep = width / size
+
+    path.moveTo(0f, centerY)
+
+    forEachIndexed { i, byte ->
+        val unsigned = byte.toInt() and 0xFF
+        val normalized = unsigned / 255f * 2f - 1f
+        val y = centerY - (normalized * centerY)
+        val x = i * xStep
+        path.lineTo(x, y)
+    }
+
+    path.lineTo(width, centerY)
+
+    return path
 }

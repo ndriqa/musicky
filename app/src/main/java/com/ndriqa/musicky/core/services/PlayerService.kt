@@ -72,53 +72,70 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         }
     }
 
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        when (intent.action) {
-            ACTION_PLAY -> {
-                val newQueue = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    intent.getParcelableArrayListExtra(EXTRA_QUEUE, Song::class.java)
-                } else {
-                    @Suppress("DEPRECATION")
-                    intent.getParcelableArrayListExtra<Song>(EXTRA_QUEUE)
-                }
-                val songPath = intent.getStringExtra(EXTRA_SONG_PATH)
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val actualIntent = intent ?: return START_NOT_STICKY
 
-                if (!newQueue.isNullOrEmpty()) {
-                    queue.clear()
-                    queue.addAll(newQueue)
-                }
-
-                songPath?.let { path ->
-                    val index = queue.indexOfFirst { it.data == path }
-                    if (index != -1) {
-                        currentIndex = index
-                        playCurrent()
-                    }
-                }
-            }
-
+        when (actualIntent.action) {
+            ACTION_PLAY -> startPlayback(actualIntent)
             ACTION_PAUSE -> pause()
             ACTION_RESUME -> resume()
             ACTION_NEXT -> next()
             ACTION_PREVIOUS -> previous()
-            ACTION_STOP -> stopSelf()
-            ACTION_SEEK_TO -> {
-                val pos = intent.getIntExtra(EXTRA_SEEK_POSITION, 0)
-                seekTo(pos)
-            }
+            ACTION_STOP -> stopPlayback()
+            ACTION_SEEK_TO -> seekTo(actualIntent)
         }
 
         return START_STICKY
     }
 
+    private fun seekTo(intent: Intent) {
+        val pos = intent.getIntExtra(EXTRA_SEEK_POSITION, 0)
+        seekTo(pos)
+    }
+
+    private fun startPlayback(intent: Intent) {
+        val newQueue = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableArrayListExtra(EXTRA_QUEUE, Song::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableArrayListExtra<Song>(EXTRA_QUEUE)
+        }
+        val songPath = intent.getStringExtra(EXTRA_SONG_PATH)
+
+        if (!newQueue.isNullOrEmpty()) {
+            queue.clear()
+            queue.addAll(newQueue)
+        }
+
+        songPath?.let { path ->
+            val index = queue.indexOfFirst { it.data == path }
+            if (index != -1) {
+                currentIndex = index
+                playCurrent()
+            }
+        }
+    }
+
+    private fun stopPlayback() {
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
+
+        stopProgressUpdates()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
     private fun pause() {
         mediaPlayer?.pause()
         refreshNotificationAndBroadcast()
+        stopProgressUpdates()
     }
 
     private fun resume() {
         mediaPlayer?.start()
         refreshNotificationAndBroadcast()
+        startProgressUpdates()
     }
 
     private fun seekTo(position: Int) {
@@ -126,32 +143,47 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         refreshNotificationAndBroadcast()
     }
 
-    private fun playCurrent() {
+    private fun playCurrent(goingForward: Boolean = true) {
         val state = playState ?: return
         val song = state.currentSong ?: return
 
-        mediaPlayer?.release()
-        mediaPlayer = MediaPlayer().apply {
-            setDataSource(song.data)
-            setOnPreparedListener(this@PlayerService)
-            setOnCompletionListener(this@PlayerService)
-            prepareAsync()
-        }
+        try {
+            mediaPlayer?.release()
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(song.data)
+                setOnPreparedListener(this@PlayerService)
+                setOnCompletionListener(this@PlayerService)
+                prepareAsync()
+            }
 
-        startForeground(NOTIFICATION_ID, buildSongNotification(state))
-        refreshNotificationAndBroadcast()
+            startForeground(NOTIFICATION_ID, buildSongNotification(state))
+            refreshNotificationAndBroadcast()
+
+        } catch (e: Exception) {
+            Timber.tag("PlayerService").e(e, "Song file missing or can't be played: ${song.data}")
+            Timber.tag("PlayerService").d("Trying the next song now!")
+
+            if (queue.isNotEmpty()) {
+                currentIndex = if (goingForward) {
+                    (currentIndex + 1) % queue.size
+                } else {
+                    if (currentIndex - 1 < 0) queue.lastIndex else currentIndex - 1
+                }
+                playCurrent(goingForward)
+            }
+        }
     }
 
     private fun next() {
         if (queue.isEmpty()) return
         currentIndex = (currentIndex + 1) % queue.size
-        playCurrent()
+        playCurrent(goingForward = true)
     }
 
     private fun previous() {
         if (queue.isEmpty()) return
         currentIndex = if (currentIndex - 1 < 0) queue.lastIndex else currentIndex - 1
-        playCurrent()
+        playCurrent(goingForward = false)
     }
 
     override fun onPrepared(mp: MediaPlayer) {

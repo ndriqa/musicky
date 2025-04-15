@@ -4,17 +4,13 @@ import android.net.Uri
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -25,7 +21,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -59,8 +54,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.pointerInput
@@ -74,17 +71,17 @@ import coil3.compose.AsyncImage
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.util.extensions.toFormattedTime
+import com.ndriqa.musicky.core.util.extensions.waveformToPath
 import com.ndriqa.musicky.ui.theme.DefaultPlayerElevation
 import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeBig
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 import com.ndriqa.musicky.ui.theme.PaddingHalf
 import com.ndriqa.musicky.ui.theme.PaddingMini
-import com.ndriqa.musicky.ui.theme.SoftError
-import com.ndriqa.musicky.ui.theme.SoftRed
 import com.ndriqa.musicky.ui.theme.SpaceMonoFontFamily
 import timber.log.Timber
 import kotlin.math.abs
-import kotlin.random.Random
+
+private const val MAX_BYTE_VAL = 256
 
 @Composable
 fun HustlePlayer(
@@ -165,10 +162,10 @@ fun HustlePlayer(
                 ) {
                     val song = playState.currentSong
                     if (expanded && song != null) {
-                        SongArtworkImage(song.artworkUri, averageSongEnergy, currentEnergy)
+                        SongArtworkImage(song.artworkUri)
                         SongHeaderInfo(song)
                         if (hasVisualizerRecordingPermission) {
-                            SongVisualizer(waveform)
+                            SongVisualizer(waveform, pulse)
                         }
                         SongControls(
                             playState = playState,
@@ -265,7 +262,7 @@ private fun ColumnScope.SongControls(
 
             LaunchedEffect(currentPosition) {
                 progress.animateTo(
-                    targetValue = currentPosition.toFloat() / maxPosition,
+                    targetValue = if (maxPosition != 0L) currentPosition.toFloat() / maxPosition else 0f,
                     animationSpec = tween(durationMillis = 300)
                 )
             }
@@ -282,12 +279,12 @@ private fun ColumnScope.SongControls(
                     .pointerInput(Unit) {
                         detectHorizontalDragGestures { change, _ ->
                             val width = size.width.toFloat()
-                            val percent = change.position.x / width
+                            val percent = if (width != 0f) change.position.x / width else 0f
                             onSeek(percent.coerceIn(0f, 1f))
                         }
                         detectTapGestures { offset ->
                             val width = size.width.toFloat()
-                            val percent = offset.x / width
+                            val percent = if (width != 0f) offset.x / width else 0f
                             onSeek(percent)
                         }
                     }
@@ -338,37 +335,27 @@ private fun ColumnScope.SongControls(
 }
 
 @Composable
-private fun ColumnScope.SongVisualizer(waveform: ByteArray) {
-    val max = waveform.maxOrNull()?.toFloat()?.takeIf { it != 0f } ?: 0f
+private fun ColumnScope.SongVisualizer(
+    waveform: ByteArray,
+    pulse: Boolean = false,
+) {
+    val lineColor = MaterialTheme.colorScheme.onPrimaryContainer
 
-    Row(
+    Canvas(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = PaddingDefault)
-            .weight(1F)
-            .heightIn(max = 256.dp),
-        horizontalArrangement = Arrangement.spacedBy(1.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .height(MAX_BYTE_VAL.dp)
+            .padding(horizontal = PaddingDefault),
     ) {
-        val barShape = CircleShape
-        waveform.forEach { barHeight ->
-            val animatedHeight by animateIntAsState(
-                targetValue = barHeight.toInt().coerceIn(0, 256),
-                animationSpec = tween(durationMillis = 120, easing = LinearEasing),
-                label = "barHeight"
+        drawPath(
+            path = waveform.waveformToPath(size.width, size.height),
+            brush = SolidColor(lineColor),
+            style = Stroke(
+                width = 1.dp.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
             )
-
-            Spacer(
-                modifier = Modifier
-                    .height(animatedHeight.dp)
-                    .weight(1F)
-                    .clip(barShape)
-                    .background(
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        shape = barShape
-                    )
-            )
-        }
+        )
     }
 }
 
@@ -400,18 +387,9 @@ private fun ColumnScope.SongHeaderInfo(song: Song) {
 }
 
 @Composable
-private fun ColumnScope.SongArtworkImage(
-    artworkImageUri: Uri?,
-    averageSongEnergy: Byte = 1,
-    currentSongEnergy: Byte = 1,
-) {
+private fun ColumnScope.SongArtworkImage(artworkImageUri: Uri?) {
     val artworkShape = RoundedCornerShape(PaddingDefault)
     val fallbackIcon = rememberVectorPainter(Icons.Rounded.MusicNote)
-    val animatedScale by animateFloatAsState(
-        targetValue = 1f + ((currentSongEnergy - averageSongEnergy).toFloat() / averageSongEnergy) * 0.05f,
-        animationSpec = tween(durationMillis = 50, easing = FastOutLinearInEasing),
-        label = "image scale based on song energy"
-    )
 
     Box(
         modifier = Modifier
