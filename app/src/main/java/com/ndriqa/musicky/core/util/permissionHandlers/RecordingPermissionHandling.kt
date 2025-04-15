@@ -27,10 +27,10 @@ import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.util.extensions.highlightSettingsTo
 import com.ndriqa.musicky.ui.theme.SoftCrimson
 
-private const val STORAGE_SETTINGS_NAME = "permission_settings"
+private const val RECORDING_SETTINGS_NAME = "permission_settings"
 
 @Composable
-fun MediaPermissionHandler(
+fun RecordingPermissionHandling(
     onPermissionGranted: () -> Unit,
     onPermissionDenied: () -> Unit,
     onRetryContent: @Composable (requestPermission: () -> Unit) -> Unit
@@ -44,23 +44,11 @@ fun MediaPermissionHandler(
         if (isGranted) {
             onPermissionGranted()
         } else {
-            Toast.makeText(
-                context,
-                context.getString(R.string.need_the_permission_to_load_songs),
-                Toast.LENGTH_SHORT
-            ).show()
             onPermissionDenied()
         }
     }
 
-    val permission = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_AUDIO
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        }
-    }
-
+    val permission = remember { Manifest.permission.RECORD_AUDIO }
     val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
 
     LaunchedEffect(Unit) {
@@ -75,10 +63,8 @@ fun MediaPermissionHandler(
     if (showDialog.value) {
         AlertDialog(
             onDismissRequest = { showDialog.value = false },
-            title = { Text(stringResource(R.string.enable_media)) },
-            text = {
-                Text(stringResource(R.string.enable_media_message))
-            },
+            title = { Text(stringResource(R.string.enable_recording)) },
+            text = { Text(stringResource(R.string.need_the_record_permission_to_visualize)) },
             confirmButton = {
                 TextButton(onClick = {
                     showDialog.value = false
@@ -95,7 +81,7 @@ fun MediaPermissionHandler(
 //                    } else {
 //                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
 //                            .apply { data = Uri.fromParts("package", context.packageName, null) }
-//                            .highlightSettingsTo(STORAGE_SETTINGS_NAME)
+//                            .highlightSettingsTo(RECORDING_SETTINGS_NAME)
 //                            .also { context.startActivity(it) }
 //                    }
                 }) { Text(

@@ -4,9 +4,14 @@ import android.net.Uri
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -54,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -73,13 +79,18 @@ import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeBig
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 import com.ndriqa.musicky.ui.theme.PaddingHalf
 import com.ndriqa.musicky.ui.theme.PaddingMini
+import com.ndriqa.musicky.ui.theme.SoftError
+import com.ndriqa.musicky.ui.theme.SoftRed
 import com.ndriqa.musicky.ui.theme.SpaceMonoFontFamily
+import timber.log.Timber
+import kotlin.math.abs
 import kotlin.random.Random
 
 @Composable
 fun HustlePlayer(
+    hasVisualizerRecordingPermission: Boolean,
     modifier: Modifier = Modifier,
-    playerViewModel: PlayerViewModel = hiltViewModel()
+    playerViewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     var isExpanded by remember { mutableStateOf(false) }
@@ -89,7 +100,13 @@ fun HustlePlayer(
     } }
 
     val playState by playerViewModel.playingState.collectAsState()
+    val waveform by playerViewModel.waveform.collectAsState()
     val isVisible by remember { derivedStateOf { playState.currentSong != null } }
+    val currentSong by remember { derivedStateOf { playState.currentSong } }
+
+    val averageSongEnergy by playerViewModel.averageSongEnergy.collectAsState()
+    val currentEnergy = waveform.map { abs(it.toInt()) }.average().toInt().toByte()
+    val pulse by playerViewModel.pulse.collectAsState(false)
 
     val gestureModifier = Modifier.pointerInput(Unit) {
         detectVerticalDragGestures { change, dragAmount ->
@@ -103,6 +120,16 @@ fun HustlePlayer(
 
     val offsetPadding = PaddingDefault * 2
     val fabElevation = DefaultPlayerElevation
+
+    LaunchedEffect(currentSong) {
+        playerViewModel.resetSongAverageEnergy()
+    }
+
+    LaunchedEffect(pulse) {
+        if (pulse) {
+            Timber.tag("pulse").d("average: $averageSongEnergy, current: $currentEnergy")
+        }
+    }
 
     AnimatedVisibility(isVisible) {
         AnimatedContent(
@@ -138,9 +165,11 @@ fun HustlePlayer(
                 ) {
                     val song = playState.currentSong
                     if (expanded && song != null) {
-                        SongArtworkImage(song.artworkUri)
+                        SongArtworkImage(song.artworkUri, averageSongEnergy, currentEnergy)
                         SongHeaderInfo(song)
-                        SongEqualizer(playState)
+                        if (hasVisualizerRecordingPermission) {
+                            SongVisualizer(waveform)
+                        }
                         SongControls(
                             playState = playState,
                             onPlayPauseClicked = { playerViewModel.playPause(context) },
@@ -309,20 +338,29 @@ private fun ColumnScope.SongControls(
 }
 
 @Composable
-private fun ColumnScope.SongEqualizer(playState: PlayingState) {
+private fun ColumnScope.SongVisualizer(waveform: ByteArray) {
+    val max = waveform.maxOrNull()?.toFloat()?.takeIf { it != 0f } ?: 0f
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = PaddingDefault)
             .weight(1F)
-            .heightIn(max = 200.dp),
-        horizontalArrangement = Arrangement.spacedBy(space = 5.dp),
+            .heightIn(max = 256.dp),
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         val barShape = CircleShape
-        repeat(times = 25) {
+        waveform.forEach { barHeight ->
+            val animatedHeight by animateIntAsState(
+                targetValue = barHeight.toInt().coerceIn(0, 256),
+                animationSpec = tween(durationMillis = 120, easing = LinearEasing),
+                label = "barHeight"
+            )
+
             Spacer(
                 modifier = Modifier
-                    .fillMaxHeight(Random.nextFloat())
+                    .height(animatedHeight.dp)
                     .weight(1F)
                     .clip(barShape)
                     .background(
@@ -363,13 +401,22 @@ private fun ColumnScope.SongHeaderInfo(song: Song) {
 
 @Composable
 private fun ColumnScope.SongArtworkImage(
-    artworkImageUri: Uri?
+    artworkImageUri: Uri?,
+    averageSongEnergy: Byte = 1,
+    currentSongEnergy: Byte = 1,
 ) {
     val artworkShape = RoundedCornerShape(PaddingDefault)
     val fallbackIcon = rememberVectorPainter(Icons.Rounded.MusicNote)
+    val animatedScale by animateFloatAsState(
+        targetValue = 1f + ((currentSongEnergy - averageSongEnergy).toFloat() / averageSongEnergy) * 0.05f,
+        animationSpec = tween(durationMillis = 50, easing = FastOutLinearInEasing),
+        label = "image scale based on song energy"
+    )
 
     Box(
-        modifier = Modifier.weight(1f)
+        modifier = Modifier
+            .weight(1f)
+//            .scale(animatedScale)
     ) {
         Box(
             modifier = Modifier

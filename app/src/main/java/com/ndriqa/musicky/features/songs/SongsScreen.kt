@@ -203,10 +203,16 @@ fun SongsScreen(
     }
 
     DisposableEffect(Unit) {
-        playerViewModel.registerPlayerUpdates(context)
+        playerViewModel.apply {
+            registerPlayerUpdates(context)
+            registerVisualizerUpdates(context)
+        }
 
         onDispose {
-            playerViewModel.unregisterPlayerUpdates(context)
+            playerViewModel.apply {
+                unregisterPlayerUpdates(context)
+                unregisterVisualizerUpdates(context)
+            }
         }
     }
 

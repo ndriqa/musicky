@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.media.MediaPlayer
 import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
@@ -12,20 +11,22 @@ import androidx.lifecycle.viewModelScope
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.services.PlayerService
+import com.ndriqa.musicky.core.services.PlayerService.Companion.VISUALIZER_WAVEFORM
+import com.ndriqa.musicky.core.util.extensions.resampleTo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.abs
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -46,11 +47,46 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    private val visualizerUpdate = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val newWaveform = intent?.getByteArrayExtra(VISUALIZER_WAVEFORM) ?: return
+            updateWaveform(newWaveform)
+        }
+    }
+
     private val _playingState = MutableStateFlow(PlayingState())
     val playingState: StateFlow<PlayingState> = _playingState.asStateFlow()
 
+    private val _songEnergyRecordings = MutableStateFlow(byteArrayOf())
+    val songEnergyRecordings = _songEnergyRecordings.asStateFlow()
+    val averageSongEnergy = _songEnergyRecordings
+        .map { it.map { abs(it.toInt()) }.average().toInt().toByte() }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    private val _pulse = MutableSharedFlow<Boolean>()
+    val pulse = _pulse.asSharedFlow()
+
+    private val _waveform = MutableStateFlow(byteArrayOf())
+    val waveform = _waveform.asStateFlow()
+
     private val _queue = MutableStateFlow<List<Song>>(emptyList())
     val queue: StateFlow<List<Song>> = _queue.asStateFlow()
+
+    private fun updateWaveform(waveform: ByteArray) {
+        viewModelScope.launch {
+            val resampledWaveform = waveform.resampleTo(WAVEFORM_BARS)
+            val energyRecordings = _songEnergyRecordings.value
+            val currentEnergy = resampledWaveform.map { abs(it.toInt()) }.average().toInt().toByte()
+
+            _pulse.emit(currentEnergy - PULSE_THRESHOLD > averageSongEnergy.value)
+            _songEnergyRecordings.value = energyRecordings + currentEnergy
+            _waveform.value = resampledWaveform
+        }
+    }
+
+    fun resetSongAverageEnergy() {
+        _songEnergyRecordings.value = byteArrayOf()
+    }
 
     fun registerPlayerUpdates(context: Context) {
         val filter = IntentFilter(PlayerService.ACTION_BROADCAST_UPDATE)
@@ -62,8 +98,22 @@ class PlayerViewModel @Inject constructor(
         )
     }
 
+    fun registerVisualizerUpdates(context: Context) {
+        val filter = IntentFilter(PlayerService.ACTION_VISUALIZER_UPDATE)
+        ContextCompat.registerReceiver(
+            /* context = */ context,
+            /* receiver = */ visualizerUpdate,
+            /* filter = */ filter,
+            /* flags = */ ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
     fun unregisterPlayerUpdates(context: Context) {
         context.unregisterReceiver(playerUpdateReceiver)
+    }
+
+    fun unregisterVisualizerUpdates(context: Context) {
+        context.unregisterReceiver(visualizerUpdate)
     }
 
     fun playPause(context: Context) {
@@ -124,20 +174,8 @@ class PlayerViewModel @Inject constructor(
         _queue.value = songs
     }
 
-    private fun handlePlayerUpdate(intent: Intent) {
-        val path = intent.getStringExtra(PlayerService.EXTRA_SONG_PATH) ?: return
-        val isPlaying = intent.getBooleanExtra(PlayerService.EXTRA_IS_PLAYING, false)
-        val position = intent.getIntExtra(PlayerService.EXTRA_POSITION, 0)
-        val duration = intent.getIntExtra(PlayerService.EXTRA_DURATION, 0)
-
-        val currentSong = queue.value.find { it.data == path } ?: return
-
-        _playingState.update {
-            it.copy(
-                currentSong = currentSong,
-                isPlaying = isPlaying,
-                currentPosition = position.toLong()
-            )
-        }
+    companion object {
+        private const val PULSE_THRESHOLD = 20
+        const val WAVEFORM_BARS = 10
     }
 }

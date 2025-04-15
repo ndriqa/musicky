@@ -35,6 +35,7 @@ import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.util.extensions.debugBorder
 import com.ndriqa.musicky.core.util.permissionHandlers.MediaPermissionHandler
 import com.ndriqa.musicky.core.util.permissionHandlers.NotificationPermissionHandler
+import com.ndriqa.musicky.core.util.permissionHandlers.RecordingPermissionHandling
 import com.ndriqa.musicky.features.player.HustlePlayer
 import com.ndriqa.musicky.features.player.PlayerViewModel
 import com.ndriqa.musicky.features.songs.SongsScreen
@@ -54,8 +55,20 @@ fun AppNavigation(
 
     var hasDeniedMediaPermission by remember { mutableStateOf(false) }
     var hasDeniedNotificationPermission by remember { mutableStateOf(false) }
+    var hasDeniedRecordingPermission by remember { mutableStateOf(false) }
     var requestMediaPermission: (() -> Unit)? by remember { mutableStateOf(null) }
     var requestNotificationPermission: (() -> Unit)? by remember { mutableStateOf(null) }
+    var requestRecordingPermission: (() -> Unit)? by remember { mutableStateOf(null) }
+
+    RecordingPermissionHandling(
+        onPermissionGranted = {
+            hasDeniedRecordingPermission = false
+            Timber.d("✅ Recording permission granted") },
+        onPermissionDenied = {
+            hasDeniedRecordingPermission = true
+            Timber.w("❌ Recording permission denied") },
+        onRetryContent = { launcher -> requestRecordingPermission = launcher }
+    )
 
     NotificationPermissionHandler(
         onPermissionGranted = {
@@ -70,6 +83,7 @@ fun AppNavigation(
     MediaPermissionHandler(
         onPermissionGranted = {
             hasDeniedMediaPermission = false
+            Timber.d("✅ Media permission granted")
             songsViewModel.startLoadingSongs(context) },
         onPermissionDenied = {
             hasDeniedMediaPermission = true
@@ -79,7 +93,10 @@ fun AppNavigation(
 
     Scaffold(
         modifier = modifier,
-        floatingActionButton = { HustlePlayer(playerViewModel = playerViewModel) },
+        floatingActionButton = { HustlePlayer(
+            hasVisualizerRecordingPermission = !hasDeniedRecordingPermission,
+            playerViewModel = playerViewModel
+        ) },
         containerColor = Color.Transparent
     ) { paddingValues ->
 
@@ -95,12 +112,14 @@ fun AppNavigation(
                 @StringRes val titleResId = when {
                     hasDeniedMediaPermission -> R.string.missing_media_permission
                     hasDeniedNotificationPermission -> R.string.missing_notification_permission
+                    hasDeniedRecordingPermission -> R.string.missing_recording_permission
                     else -> null
                 }
 
                 @StringRes val messageResId = when {
                     hasDeniedMediaPermission -> R.string.missing_permissions_message
                     hasDeniedNotificationPermission -> R.string.missing_notification_permission_message
+                    hasDeniedRecordingPermission -> R.string.missing_recording_permission_message
                     else -> null
                 }
 

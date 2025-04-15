@@ -6,13 +6,13 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.media.MediaPlayer
+import android.media.audiofx.Visualizer
 import android.os.Build
 import android.os.IBinder
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationCompat
-import androidx.media.app.NotificationCompat as MediaNotificationCompat
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.Song
@@ -24,12 +24,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.math.max
+import timber.log.Timber
+import androidx.media.app.NotificationCompat as MediaNotificationCompat
 
 class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener {
-    private val notificationChannel = NotificationChannelInfo.Playing
-
     private var mediaPlayer: MediaPlayer? = null
+    private var audioVisualizer: Visualizer? = null
+
     private var currentIndex = -1
     private var progressJob: Job? = null
 
@@ -37,8 +38,12 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     private val playState: PlayingState?
         get() {
             val song = queue.getOrNull(currentIndex) ?: return null
-            val isPlaying = mediaPlayer?.isPlaying == true
-            val currentPosition = mediaPlayer?.currentPosition?.toLong() ?: 0L
+            val isPlaying =
+                try { mediaPlayer?.isPlaying == true }
+                catch (e: IllegalStateException) { false }
+            val currentPosition =
+                try { mediaPlayer?.currentPosition?.toLong() ?: 0L }
+                catch (e: IllegalStateException) { 0L }
 
             return PlayingState(
                 currentSong = song,
@@ -151,6 +156,8 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
 
     override fun onPrepared(mp: MediaPlayer) {
         mp.start()
+        try { setupVisualizer(mp.audioSessionId) }
+        catch (e: Exception) { Timber.e(e) }
         // if not with progress updates, then call to update noti and broad manually here
         startProgressUpdates()
     }
@@ -161,9 +168,19 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
 
     override fun onDestroy() {
         super.onDestroy()
+        cleanUpAudioVisualizer()
+        cleanUpMediaPlayer()
+        stopProgressUpdates()
+    }
+
+    private fun cleanUpAudioVisualizer() {
+        audioVisualizer?.release()
+        audioVisualizer = null
+    }
+
+    private fun cleanUpMediaPlayer() {
         mediaPlayer?.release()
         mediaPlayer = null
-        stopProgressUpdates()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -171,17 +188,11 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     private fun sendStateBroadcast() {
         val song = queue.getOrNull(currentIndex) ?: return
 
-        val intent = Intent(ACTION_BROADCAST_UPDATE).apply {
+        Intent(ACTION_BROADCAST_UPDATE).apply {
             setPackage(packageName)
-            putExtra(EXTRA_SONG, song)
             putExtra(EXTRA_PLAYING_STATE, playState)
             putExtra(EXTRA_SONG_PATH, song.data)
-            putExtra(EXTRA_IS_PLAYING, mediaPlayer?.isPlaying == true)
-            putExtra(EXTRA_POSITION, mediaPlayer?.currentPosition ?: 0)
-            putExtra(EXTRA_DURATION, song.duration.toInt())
-        }
-
-        sendBroadcast(intent)
+        }.also { intent -> sendBroadcast(intent) }
     }
 
     private fun buildSongNotification(state: PlayingState): Notification {
@@ -289,8 +300,45 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
             )
             .build()
 
-        mediaSession.setMetadata(metadata)
-        mediaSession.setPlaybackState(playbackState)
+        mediaSession.apply {
+            setMetadata(metadata)
+            setPlaybackState(playbackState)
+        }
+    }
+
+    private fun setupVisualizer(audioSessionId: Int) {
+        audioVisualizer?.release() // always release before setting a new one
+        audioVisualizer = Visualizer(audioSessionId).apply {
+            captureSize = Visualizer.getCaptureSizeRange()[1]
+            setDataCaptureListener(
+                /* listener = */ object : Visualizer.OnDataCaptureListener {
+                    override fun onWaveFormDataCapture(
+                        visualizer: Visualizer,
+                        waveform: ByteArray,
+                        samplingRate: Int
+                    ) {
+                        if (mediaPlayer?.isPlaying != true) return
+                        // send waveform data to the UI using broadcast (or another mechanism)
+                        Intent(ACTION_VISUALIZER_UPDATE).apply {
+                            setPackage(packageName)
+                            putExtra(VISUALIZER_WAVEFORM, waveform)
+                        }.also { intent -> sendBroadcast(intent) }
+                    }
+
+                    override fun onFftDataCapture(
+                        visualizer: Visualizer,
+                        fft: ByteArray,
+                        samplingRate: Int
+                    ) {
+                        // optionally broadcast FFT data instead (or both)
+                    }
+                },
+                /* rate = */ Visualizer.getMaxCaptureRate() / 2,
+                /* waveform = */ true,
+                /* fft = */ false
+            )
+            enabled = true
+        }
     }
 
     companion object {
@@ -301,16 +349,18 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         const val ACTION_PREVIOUS = "com.ndriqa.action.PREVIOUS"
         const val ACTION_STOP = "com.ndriqa.action.STOP"
         const val ACTION_SEEK_TO = "com.ndriqa.action.SEEK_TO"
-        const val ACTION_BROADCAST_UPDATE = "com.ndriqa.action.UPDATE"
 
-        const val EXTRA_IS_PLAYING = "extra_is_playing"
-        const val EXTRA_POSITION = "extra_position"
-        const val EXTRA_DURATION = "extra_duration"
+        const val ACTION_BROADCAST_UPDATE = "com.ndriqa.action.UPDATE"
+        const val ACTION_VISUALIZER_UPDATE = "com.ndriqa.action.VISUALIZER_UPDATE"
+
         const val EXTRA_SONG_PATH = "extra_song_path"
-        const val EXTRA_SONG = "extra_song"
         const val EXTRA_PLAYING_STATE = "extra_playing_state"
         const val EXTRA_QUEUE = "extra_queue"
         const val EXTRA_SEEK_POSITION = "extra_seek_position"
+        const val VISUALIZER_WAVEFORM = "visualizer_waveform"
+
+        private const val VISUALIZER_RETRY_ATTEMPTS = 10 //times
+        private const val VISUALIZER_RETRY_INTERVALS = 50L //ms
 
         const val NOTIFICATION_ID = 1001
     }

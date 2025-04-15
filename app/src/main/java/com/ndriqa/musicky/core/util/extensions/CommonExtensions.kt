@@ -67,3 +67,14 @@ fun Uri.loadAsBitmap(context: Context): Bitmap? {
         null
     }
 }
+
+fun ByteArray.resampleTo(size: Int): ByteArray {
+    if (this.size <= size) return this.copyOf(size)
+
+    val step = this.size / size.toFloat()
+    return ByteArray(size) { i ->
+        val start = (i * step).toInt()
+        val end = ((i + 1) * step).toInt().coerceAtMost(this.size)
+        this.slice(start until end).average().toInt().toByte()
+    }
+}

@@ -82,15 +82,17 @@ fun NotificationPermissionHandler(
                             )
                         } == true
 
-                        if (shouldShow) {
-                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else {
-                            // user has denied permanently → send to app settings
-                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                                .apply { data = Uri.fromParts("package", context.packageName, null) }
-                                .highlightSettingsTo(NOTIFICATIONS_SETTINGS_NAME)
-                                .also { context.startActivity(it) }
-                        }
+                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+
+//                        if (shouldShow) {
+//                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+//                        } else {
+//                            // user has denied permanently → send to app settings
+//                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+//                                .apply { data = Uri.fromParts("package", context.packageName, null) }
+//                                .highlightSettingsTo(NOTIFICATIONS_SETTINGS_NAME)
+//                                .also { context.startActivity(it) }
+//                        }
                     } else {
                         onPermissionGranted()
                     }
