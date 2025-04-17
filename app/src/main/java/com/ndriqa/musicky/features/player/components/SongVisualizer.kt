@@ -1,6 +1,7 @@
 package com.ndriqa.musicky.features.player.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -12,9 +13,12 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ndriqa.musicky.core.util.extensions.waveformToPath
+import com.ndriqa.musicky.core.util.helpers.MockHelper
 import com.ndriqa.musicky.features.player.MAX_BYTE_VAL
+import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 
 @Composable
@@ -39,5 +43,15 @@ internal fun ColumnScope.SongVisualizer(
                 join = StrokeJoin.Round
             )
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SongVisualizerPreview() {
+    MusickyTheme {
+        Column {
+            SongVisualizer(MockHelper.getMockWaveform())
+        }
     }
 }

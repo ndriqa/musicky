@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
@@ -30,9 +32,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.util.extensions.toFormattedTime
+import com.ndriqa.musicky.core.util.helpers.MockHelper
+import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingHalf
 import com.ndriqa.musicky.ui.theme.SpaceMonoFontFamily
 
@@ -129,6 +134,22 @@ internal fun ColumnScope.SongControls(
                     contentDescription = null
                 )
             }
+        }
+    }
+}
+
+@Preview(showBackground = true, heightDp = 150)
+@Composable
+private fun SongControlPreview() {
+    MusickyTheme {
+        Column {
+            SongControls(
+                playState = MockHelper.getMockPlayingState(),
+                onPlayPauseClicked = {  },
+                onNextClicked = {  },
+                onPrevClicked = {  },
+                onSeek = {  }
+            )
         }
     }
 }

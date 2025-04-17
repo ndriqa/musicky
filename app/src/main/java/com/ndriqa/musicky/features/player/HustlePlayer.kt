@@ -23,13 +23,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.ndriqa.musicky.core.util.helpers.MockHelper
 import com.ndriqa.musicky.features.player.components.MusicDisc
 import com.ndriqa.musicky.features.player.components.SongArtworkImage
 import com.ndriqa.musicky.features.player.components.SongControls
 import com.ndriqa.musicky.features.player.components.SongHeaderInfo
 import com.ndriqa.musicky.features.player.components.SongVisualizer
+import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 import timber.log.Timber
 import kotlin.math.abs
@@ -132,5 +135,47 @@ fun HustlePlayer(
                 }
             }
         }
+    }
+}
+
+@Preview
+@Composable
+private fun HustlePlayerCompactPreview() {
+    val context = LocalContext.current
+    val playerViewModel = PlayerViewModel(context).apply {
+        updatePlayingStateTesting(MockHelper.getMockPlayingState())
+    }
+
+    MusickyTheme {
+        HustlePlayer(
+            hasVisualizerRecordingPermission = true,
+            onExpandedUpdate = {  },
+            isVisible = true,
+            isExpanded = false,
+            playerViewModel = playerViewModel
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HustlePlayerExpandedPreview() {
+    val context = LocalContext.current
+    val playerViewModel = PlayerViewModel(context).apply {
+        updatePlayingStateTesting(MockHelper.getMockPlayingState())
+    }
+
+    MusickyTheme {
+        HustlePlayer(
+            hasVisualizerRecordingPermission = true,
+            onExpandedUpdate = {  },
+            modifier = Modifier.padding(
+                bottom = PaddingDefault * 3,
+                end = PaddingDefault * 2
+            ),
+            isVisible = true,
+            isExpanded = true,
+            playerViewModel = playerViewModel
+        )
     }
 }

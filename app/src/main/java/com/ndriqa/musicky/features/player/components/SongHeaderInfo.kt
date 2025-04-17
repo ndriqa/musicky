@@ -11,9 +11,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ndriqa.musicky.core.data.Song
+import com.ndriqa.musicky.core.util.helpers.MockHelper
+import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingMini
 
 @Composable
@@ -40,5 +43,15 @@ internal fun ColumnScope.SongHeaderInfo(song: Song) {
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center
         )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 200)
+@Composable
+private fun SongHeaderInfoPreview() {
+    MusickyTheme {
+        Column {
+            SongHeaderInfo(MockHelper.getMockSong())
+        }
     }
 }

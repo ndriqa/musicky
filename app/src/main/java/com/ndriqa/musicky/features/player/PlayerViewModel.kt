@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import androidx.annotation.VisibleForTesting
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -70,6 +71,11 @@ class PlayerViewModel @Inject constructor(
 
     private val _queue = MutableStateFlow<List<Song>>(emptyList())
     val queue: StateFlow<List<Song>> = _queue.asStateFlow()
+
+    @VisibleForTesting
+    internal fun updatePlayingStateTesting(playingState: PlayingState) {
+        _playingState.value = playingState
+    }
 
     private fun updateWaveform(waveform: ByteArray) {
         viewModelScope.launch {
