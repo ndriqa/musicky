@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import androidx.annotation.RequiresApi
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -64,7 +65,7 @@ class SongsViewModel @Inject constructor(
     private fun getAllSongs(context: Context): List<Song> {
         val songList = mutableListOf<Song>()
 
-        val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        val uri = getAudioMediaUriCompat()
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
@@ -113,6 +114,28 @@ class SongsViewModel @Inject constructor(
         }
 
         return songList
+    }
+
+    private fun getAudioMediaUriCompat(): Uri {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            getSafeAudioMediaUri()
+        } else {
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun getSafeAudioMediaUri(): Uri {
+        return try {
+            getAudioMediaUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        } catch (e: IllegalArgumentException) {
+            getAudioMediaUri(MediaStore.VOLUME_EXTERNAL)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun getAudioMediaUri(volume: String): Uri {
+        return MediaStore.Audio.Media.getContentUri(volume)
     }
 
     fun tryDeleteSongFile(context: Context, song: Song) {
