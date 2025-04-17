@@ -26,7 +26,9 @@ fun ndriqaDonate(context: Context) {
 }
 
 fun Context.openExternalUrl(url: String) {
-    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    startActivity(intent)
+    Intent(Intent.ACTION_VIEW, url.toUri())
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        .also { intent ->
+            if (intent.resolveActivity(packageManager) != null) startActivity(intent)
+        }
 }
