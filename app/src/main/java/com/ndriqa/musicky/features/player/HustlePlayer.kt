@@ -4,14 +4,20 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults.elevation
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +40,8 @@ import com.ndriqa.musicky.features.player.components.SongHeaderInfo
 import com.ndriqa.musicky.features.player.components.SongVisualizer
 import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingDefault
+import com.ndriqa.musicky.ui.theme.SoftGreen
+import com.ndriqa.musicky.ui.theme.SoftRed
 import timber.log.Timber
 import kotlin.math.abs
 
@@ -52,6 +60,8 @@ fun HustlePlayer(
     val playerShape = if (isExpanded) RoundedCornerShape(PaddingDefault) else CircleShape
     val playState by playerViewModel.playingState.collectAsState()
     val waveform by playerViewModel.waveform.collectAsState()
+    val audioFeatures by playerViewModel.audioFeatures.collectAsState()
+    val fftFeatures by playerViewModel.fftFeatures.collectAsState()
     val currentSong by remember { derivedStateOf { playState.currentSong } }
 
     val averageSongEnergy by playerViewModel.averageSongEnergy.collectAsState()
@@ -120,7 +130,7 @@ fun HustlePlayer(
                         SongArtworkImage(song.artworkUri)
                         SongHeaderInfo(song)
                         if (hasVisualizerRecordingPermission) {
-                            SongVisualizer(waveform, pulse)
+                            SongVisualizer(waveform, audioFeatures, fftFeatures)
                         }
                         SongControls(
                             playState = playState,

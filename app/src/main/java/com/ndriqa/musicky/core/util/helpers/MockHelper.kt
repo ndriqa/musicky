@@ -2,6 +2,8 @@ package com.ndriqa.musicky.core.util.helpers
 
 import android.net.Uri
 import androidx.core.net.toUri
+import com.ndriqa.musicky.core.data.AudioFeatures
+import com.ndriqa.musicky.core.data.FftFeatures
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.Song
 
@@ -34,6 +36,14 @@ object MockHelper {
 
     fun getMockWaveform(): ByteArray {
         return ByteArray(500) { (Byte.MIN_VALUE..Byte.MAX_VALUE).random().toByte() }
+    }
+
+    fun getMockAudioFeatures(): AudioFeatures {
+        return AudioFeatures()
+    }
+
+    fun getMockFftFeatures(): FftFeatures {
+        return FftFeatures()
     }
 
     fun getMockArtworkUri(): Uri {

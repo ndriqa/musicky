@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.ndriqa.musicky.core.data.AudioFeatures
+import com.ndriqa.musicky.core.data.FftFeatures
 import com.ndriqa.musicky.core.util.extensions.waveformToPath
 import com.ndriqa.musicky.core.util.helpers.MockHelper
 import com.ndriqa.musicky.features.player.MAX_BYTE_VAL
@@ -24,9 +26,11 @@ import com.ndriqa.musicky.ui.theme.PaddingDefault
 @Composable
 internal fun ColumnScope.SongVisualizer(
     waveform: ByteArray,
-    pulse: Boolean = false,
+    audioFeatures: AudioFeatures,
+    fftFeatures: FftFeatures,
 ) {
     val lineColor = MaterialTheme.colorScheme.onPrimaryContainer
+    val lineWidth = if (fftFeatures.bass > 80) 2.dp else 1.dp
 
     Canvas(
         modifier = Modifier
@@ -38,7 +42,7 @@ internal fun ColumnScope.SongVisualizer(
             path = waveform.waveformToPath(size.width, size.height),
             brush = SolidColor(lineColor),
             style = Stroke(
-                width = 1.dp.toPx(),
+                width = lineWidth.toPx(),
                 cap = StrokeCap.Round,
                 join = StrokeJoin.Round
             )
@@ -51,7 +55,11 @@ internal fun ColumnScope.SongVisualizer(
 private fun SongVisualizerPreview() {
     MusickyTheme {
         Column {
-            SongVisualizer(MockHelper.getMockWaveform())
+            SongVisualizer(
+                waveform = MockHelper.getMockWaveform(),
+                audioFeatures = MockHelper.getMockAudioFeatures(),
+                fftFeatures = MockHelper.getMockFftFeatures()
+            )
         }
     }
 }

@@ -9,10 +9,15 @@ import androidx.annotation.VisibleForTesting
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ndriqa.musicky.core.data.AudioFeatures
+import com.ndriqa.musicky.core.data.FftFeatures
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.services.PlayerService
+import com.ndriqa.musicky.core.services.PlayerService.Companion.VISUALIZER_AUDIO_FEATURES
+import com.ndriqa.musicky.core.services.PlayerService.Companion.VISUALIZER_FFT_FEATURES
 import com.ndriqa.musicky.core.services.PlayerService.Companion.VISUALIZER_WAVEFORM
+import com.ndriqa.musicky.core.util.extensions.getSafeParcelableExtra
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -49,8 +54,16 @@ class PlayerViewModel @Inject constructor(
 
     private val visualizerUpdate = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            val newWaveform = intent?.getByteArrayExtra(VISUALIZER_WAVEFORM) ?: return
-            updateWaveform(newWaveform)
+            intent?.run {
+                getByteArrayExtra(VISUALIZER_WAVEFORM)
+                    ?.let { updateWaveform(it)  }
+
+                getSafeParcelableExtra<AudioFeatures>(VISUALIZER_AUDIO_FEATURES)
+                    ?.let { updateAudioFeatures(it) }
+
+                getSafeParcelableExtra<FftFeatures>(VISUALIZER_FFT_FEATURES)
+                    ?.let { updateFftFeatures(it) }
+            }
         }
     }
 
@@ -68,6 +81,12 @@ class PlayerViewModel @Inject constructor(
 
     private val _waveform = MutableStateFlow(byteArrayOf())
     val waveform = _waveform.asStateFlow()
+
+    private val _audioFeatures = MutableStateFlow(AudioFeatures())
+    val audioFeatures = _audioFeatures.asStateFlow()
+
+    private val _fftFeatures = MutableStateFlow(FftFeatures())
+    val fftFeatures = _fftFeatures.asStateFlow()
 
     private val _queue = MutableStateFlow<List<Song>>(emptyList())
     val queue: StateFlow<List<Song>> = _queue.asStateFlow()
@@ -87,6 +106,14 @@ class PlayerViewModel @Inject constructor(
             _songEnergyRecordings.value = energyRecordings + currentEnergy
             _waveform.value = resampledWaveform
         }
+    }
+
+    private fun updateFftFeatures(newFftFeatures: FftFeatures) {
+        _fftFeatures.value = newFftFeatures
+    }
+
+    private fun updateAudioFeatures(newAudioFeatures: AudioFeatures) {
+        _audioFeatures.value = newAudioFeatures
     }
 
     fun resetSongAverageEnergy() {

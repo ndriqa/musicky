@@ -17,6 +17,8 @@ import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.util.extensions.loadAsBitmap
+import com.ndriqa.musicky.core.util.helpers.AudioAnalyzer
+import com.ndriqa.musicky.core.util.helpers.FftAnalyzer
 import com.ndriqa.musicky.core.util.notifications.NotificationChannelInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +32,8 @@ import androidx.media.app.NotificationCompat as MediaNotificationCompat
 class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener {
     private var mediaPlayer: MediaPlayer? = null
     private var audioVisualizer: Visualizer? = null
+    private val fftAnalyzer = FftAnalyzer()
+    private val audioAnalyzer = AudioAnalyzer()
 
     private var currentIndex = -1
     private var progressJob: Job? = null
@@ -350,11 +354,13 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
                         samplingRate: Int
                     ) {
                         if (mediaPlayer?.isPlaying != true) return
+                        val audioFeatures = audioAnalyzer.analyze(waveform)
                         // send waveform data to the UI using broadcast (or another mechanism)
-                        Intent(ACTION_VISUALIZER_UPDATE).apply {
-                            setPackage(packageName)
-                            putExtra(VISUALIZER_WAVEFORM, waveform)
-                        }.also { intent -> sendBroadcast(intent) }
+                        Intent(ACTION_VISUALIZER_UPDATE)
+                            .setPackage(packageName)
+                            .putExtra(VISUALIZER_WAVEFORM, waveform)
+                            .putExtra(VISUALIZER_AUDIO_FEATURES, audioFeatures)
+                            .also { intent -> sendBroadcast(intent) }
                     }
 
                     override fun onFftDataCapture(
@@ -363,11 +369,16 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
                         samplingRate: Int
                     ) {
                         // optionally broadcast FFT data instead (or both)
+                        val fftFeatures = fftAnalyzer.analyze(fft, samplingRate)
+                        Intent(ACTION_VISUALIZER_UPDATE)
+                            .setPackage(packageName)
+                            .putExtra(VISUALIZER_FFT_FEATURES, fftFeatures)
+                            .also { intent -> sendBroadcast(intent) }
                     }
                 },
                 /* rate = */ Visualizer.getMaxCaptureRate() / 2,
                 /* waveform = */ true,
-                /* fft = */ false
+                /* fft = */ true
             )
             enabled = true
         }
@@ -385,11 +396,13 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         const val ACTION_BROADCAST_UPDATE = "com.ndriqa.action.UPDATE"
         const val ACTION_VISUALIZER_UPDATE = "com.ndriqa.action.VISUALIZER_UPDATE"
 
-        const val EXTRA_SONG_PATH = "extra_song_path"
-        const val EXTRA_PLAYING_STATE = "extra_playing_state"
-        const val EXTRA_QUEUE = "extra_queue"
-        const val EXTRA_SEEK_POSITION = "extra_seek_position"
-        const val VISUALIZER_WAVEFORM = "visualizer_waveform"
+        const val EXTRA_SONG_PATH = "EXTRA_SONG_PATH"
+        const val EXTRA_PLAYING_STATE = "EXTRA_PLAYING_STATE"
+        const val EXTRA_QUEUE = "EXTRA_QUEUE"
+        const val EXTRA_SEEK_POSITION = "EXTRA_SEEK_POSITION"
+        const val VISUALIZER_WAVEFORM = "VISUALIZER_WAVEFORM"
+        const val VISUALIZER_AUDIO_FEATURES = "VISUALIZER_AUDIO_FEATURES"
+        const val VISUALIZER_FFT_FEATURES = "VISUALIZER_FFT_FEATURES"
 
         private const val VISUALIZER_RETRY_ATTEMPTS = 10 //times
         private const val VISUALIZER_RETRY_INTERVALS = 50L //ms
