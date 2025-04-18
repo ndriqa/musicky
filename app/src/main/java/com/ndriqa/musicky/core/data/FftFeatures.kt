@@ -11,4 +11,11 @@ data class FftFeatures(
     val treble: Double = 0.0,
     val spectralCentroid: Double = 0.0,
     val normalizedCentroid: Double = 0.0 // value between 0 (warm) and 1 (cold)
-): Parcelable
+): Parcelable {
+    val isBass: Boolean
+        get() = bass > BASS_THRESHOLD
+
+    companion object {
+        private const val BASS_THRESHOLD = 90
+    }
+}

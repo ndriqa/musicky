@@ -67,7 +67,6 @@ fun Uri.loadAsBitmap(context: Context): Bitmap? {
             BitmapFactory.decodeStream(input)
         }
     } catch (e: Exception) {
-        e.printStackTrace()
         null
     }
 }

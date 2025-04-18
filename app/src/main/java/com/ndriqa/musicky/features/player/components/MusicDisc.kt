@@ -33,6 +33,7 @@ import coil3.compose.AsyncImage
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.util.helpers.MockHelper
 import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeBig
+import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeCompact
 import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 
@@ -92,7 +93,7 @@ internal fun ColumnScope.MusicDisc(
         Icon(
             imageVector = Icons.Rounded.RadioButtonChecked,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primaryContainer.copy(alpha = .5f),
+            tint = MaterialTheme.colorScheme.primaryContainer.copy(alpha = .75f),
             modifier = Modifier.align(Alignment.Center)
         )
     }

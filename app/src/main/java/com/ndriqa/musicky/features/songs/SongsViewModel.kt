@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.FileNotFoundException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -96,6 +97,17 @@ class SongsViewModel @Inject constructor(
                 val duration = cursor.getLong(durationCol)
                 if (duration < 45_000) continue // skip short clips
 
+                val potentialArtworkUri = ContentUris.withAppendedId(
+                    /* contentUri = */ "content://media/external/audio/albumart".toUri(),
+                    /* id = */ cursor.getLong(albumIdCol)
+                )
+
+                val artworkUri = try {
+                    context.contentResolver
+                        .openFileDescriptor(potentialArtworkUri, "r")
+                        ?.use { potentialArtworkUri }
+                } catch (e: FileNotFoundException) { null }
+
                 songList += Song(
                     id = cursor.getLong(idCol),
                     title = cursor.getString(titleCol)?.trim() ?: "Unknown Title",
@@ -105,10 +117,7 @@ class SongsViewModel @Inject constructor(
                     dateAdded = cursor.getString(dateAdded),
                     dateModified = cursor.getString(dateModified),
                     data = cursor.getString(dataCol),
-                    artworkUri = ContentUris.withAppendedId(
-                        /* contentUri = */ "content://media/external/audio/albumart".toUri(),
-                        /* id = */ cursor.getLong(albumIdCol)
-                    )
+                    artworkUri = artworkUri
                 )
             }
         }

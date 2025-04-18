@@ -2,6 +2,7 @@ package com.ndriqa.musicky.features.player
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +39,8 @@ import com.ndriqa.musicky.features.player.components.SongArtworkImage
 import com.ndriqa.musicky.features.player.components.SongControls
 import com.ndriqa.musicky.features.player.components.SongHeaderInfo
 import com.ndriqa.musicky.features.player.components.SongVisualizer
+import com.ndriqa.musicky.ui.theme.DiscSize
+import com.ndriqa.musicky.ui.theme.DiscSizeOffsetMax
 import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 import com.ndriqa.musicky.ui.theme.SoftGreen
@@ -82,21 +85,19 @@ fun HustlePlayer(
     val topOffsetPadding = PaddingDefault * 3
     val fabElevation = 0.dp
 
+    val discSizeOffset = DiscSizeOffsetMax * (audioFeatures.normalizedDisturbance - 0.5).toFloat()
+    val discSize = DiscSize + discSizeOffset
+    val animatedDiscSize by animateDpAsState(targetValue = discSize)
+
     LaunchedEffect(currentSong) {
         playerViewModel.resetSongAverageEnergy()
-    }
-
-    LaunchedEffect(pulse) {
-        if (pulse) {
-            Timber.tag("pulse").d("average: $averageSongEnergy, current: $currentEnergy")
-        }
     }
 
     AnimatedVisibility(isVisible) {
         AnimatedContent(targetState = isExpanded) { expanded ->
             val sizeModifier =
                 if (!expanded) Modifier
-                    .size(60.dp)
+                    .size(animatedDiscSize)
                 else Modifier
                     .fillMaxSize()
                     .padding(
