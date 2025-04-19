@@ -1,11 +1,9 @@
 package com.ndriqa.musicky.navigation
 
-sealed class Screens(val route: String) {
+import kotlinx.serialization.Serializable
 
-    object Songs : Screens(route = "songs")
-    object About : Screens(route = "about")
-    object Options : Screens(route = "options")
-    object ScreenTwo : Screens(route = "screenTwo/{parameter}") {
-        fun createRoute(parameter: String) = "screenTwo/$parameter"
-    }
+@Serializable
+sealed class Screens {
+    @Serializable object Songs : Screens()
+    @Serializable object Settings : Screens()
 }

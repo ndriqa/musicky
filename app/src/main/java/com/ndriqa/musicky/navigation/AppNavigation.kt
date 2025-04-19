@@ -89,6 +89,7 @@ fun AppNavigation(
         floatingActionButton = { HustlePlayer(
             hasVisualizerRecordingPermission = !hasDeniedRecordingPermission,
             onExpandedUpdate = { isHustlePlayerExpanded = it },
+            navController = navController,
             isExpanded = isHustlePlayerExpanded,
             isVisible = isHustlePlayerVisible,
             playerViewModel = playerViewModel
@@ -127,16 +128,15 @@ fun AppNavigation(
                             if (shouldBlur) Modifier.blur(blurRadius)
                             else Modifier),
                     navController = navController,
-                    startDestination = Screens.Songs.route,
+                    startDestination = Screens.Songs,
                 ) {
-                    composable(Screens.Songs.route) {
+                    composable<Screens.Songs> {
                         SongsScreen(
                             songsViewModel = songsViewModel,
                             playerViewModel = playerViewModel
                         )
                     }
-                    composable(Screens.About.route) {  }
-                    composable(Screens.Options.route) {  }
+                    composable<Screens.Settings> {  }
 //            composable(Screens.ScreenTwo.route) { backStackEntry -> }
                 }
 

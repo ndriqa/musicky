@@ -13,9 +13,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.lifecycle.ViewModel
 import com.ndriqa.musicky.core.data.FftFeatures
 import com.ndriqa.musicky.core.data.Song
+import com.ndriqa.musicky.core.data.VisualizerType
 import timber.log.Timber
 import java.time.ZonedDateTime
 import java.util.Locale
+import kotlin.math.absoluteValue
+import kotlin.math.cos
+import kotlin.math.sin
 
 fun Long.toFormattedTime(showMillis: Boolean = false): String {
     val locale = Locale.getDefault()
@@ -84,25 +88,70 @@ fun ByteArray.resampleTo(size: Int): ByteArray {
 
 fun ByteArray.waveformToPath(
     width: Float,
-    height: Float
+    height: Float,
+    visualizerType: VisualizerType
 ): Path {
     val path = Path()
     if (isEmpty()) return path
 
     val centerY = height / 2f
+    val centerX = width / 2f
     val xStep = width / size
 
-    path.moveTo(0f, centerY)
+    when(visualizerType) {
+        VisualizerType.LineCenter -> {
+            path.moveTo(0f, centerY)
 
-    forEachIndexed { i, byte ->
-        val unsigned = byte.toInt() and 0xFF
-        val normalized = unsigned / 255f * 2f - 1f
-        val y = centerY - (normalized * centerY)
-        val x = i * xStep
-        path.lineTo(x, y)
+            forEachIndexed { i, byte ->
+                val unsigned = byte.toInt() and 0xFF
+                val normalized = unsigned / 255f * 2f - 1f
+                val y = centerY - (normalized * centerY)
+                val x = i * xStep
+                path.lineTo(x, y)
+            }
+
+            path.lineTo(width, centerY)
+        }
+
+        VisualizerType.LineBottom -> {
+            path.moveTo(0f, height)
+
+            forEachIndexed { i, byte ->
+                val unsigned = byte.toInt() and 0xFF
+                val normalized = unsigned / 255f * 2f - 1f
+                val y = height - (normalized.absoluteValue * height)
+                val x = i * xStep
+                path.lineTo(x, y)
+            }
+
+            path.lineTo(width, height)
+        }
+
+        VisualizerType.Circular -> {
+            val maxRingSize = if (width > height) height else width
+            val baseRadius = maxRingSize / 4
+            val radiusVariation = maxRingSize / 4
+            val pointCount = size
+            val angleStep = (2 * Math.PI / pointCount).toFloat()
+
+            forEachIndexed { i, byte ->
+                val unsigned = byte.toInt() and 0xFF
+                val normalized = unsigned / 255f
+                val dynamicRadius = baseRadius + normalized * radiusVariation
+
+                val angle = i * angleStep
+                val x = centerX + cos(angle) * dynamicRadius
+                val y = centerY + sin(angle) * dynamicRadius
+
+                if (i == 0) path.moveTo(x, y)
+                else path.lineTo(x, y)
+            }
+
+            path.close()
+        }
     }
 
-    path.lineTo(width, centerY)
+
 
     return path
 }
