@@ -22,6 +22,4 @@ enum class VisualizerType(
         title = "Circular",
         icon = Icons.Rounded.BlurCircular
     )
-
-    // TODO add circular
 }

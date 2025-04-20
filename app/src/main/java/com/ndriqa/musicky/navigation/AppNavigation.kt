@@ -14,6 +14,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -39,6 +41,8 @@ import com.ndriqa.musicky.core.util.permissionHandlers.NotificationPermissionHan
 import com.ndriqa.musicky.core.util.permissionHandlers.RecordingPermissionHandling
 import com.ndriqa.musicky.features.player.HustlePlayer
 import com.ndriqa.musicky.features.player.PlayerViewModel
+import com.ndriqa.musicky.features.settings.SettingsScreen
+import com.ndriqa.musicky.features.settings.SettingsViewModel
 import com.ndriqa.musicky.features.songs.SongsScreen
 import com.ndriqa.musicky.features.songs.SongsViewModel
 import com.ndriqa.musicky.ui.theme.PaddingCompact
@@ -52,6 +56,7 @@ fun AppNavigation(
     val navController = rememberNavController()
     val songsViewModel: SongsViewModel = hiltViewModel()
     val playerViewModel: PlayerViewModel = hiltViewModel()
+    val settingsViewModel: SettingsViewModel = hiltViewModel()
 
     var hasDeniedMediaPermission by remember { mutableStateOf(false) }
     var hasDeniedNotificationPermission by remember { mutableStateOf(false) }
@@ -61,6 +66,8 @@ fun AppNavigation(
     var requestRecordingPermission: (() -> Unit)? by remember { mutableStateOf(null) }
 
     val playState by playerViewModel.playingState.collectAsState()
+    val minAudioLength by settingsViewModel.minAudioLength.collectAsState()
+
     val isHustlePlayerVisible by remember { derivedStateOf { playState.currentSong != null } }
     var isHustlePlayerExpanded by remember { mutableStateOf(false) }
 
@@ -84,6 +91,26 @@ fun AppNavigation(
         onRetryContent = { launcher -> requestMediaPermission = launcher }
     )
 
+    LaunchedEffect(minAudioLength) {
+        if (!hasDeniedMediaPermission) {
+            songsViewModel.startLoadingSongs(context)
+        }
+    }
+
+    DisposableEffect(Unit) {
+        playerViewModel.apply {
+            registerPlayerUpdates(context)
+            registerVisualizerUpdates(context)
+        }
+
+        onDispose {
+            playerViewModel.apply {
+                unregisterPlayerUpdates(context)
+                unregisterVisualizerUpdates(context)
+            }
+        }
+    }
+
     Scaffold(
         modifier = Modifier,
         floatingActionButton = { HustlePlayer(
@@ -92,7 +119,8 @@ fun AppNavigation(
             navController = navController,
             isExpanded = isHustlePlayerExpanded,
             isVisible = isHustlePlayerVisible,
-            playerViewModel = playerViewModel
+            playerViewModel = playerViewModel,
+            settingsViewModel = settingsViewModel
         ) },
         containerColor = Color.Transparent
     ) { paddingValues ->
@@ -136,14 +164,20 @@ fun AppNavigation(
                             playerViewModel = playerViewModel
                         )
                     }
-                    composable<Screens.Settings> {  }
-//            composable(Screens.ScreenTwo.route) { backStackEntry -> }
+                    composable<Screens.Settings> {
+                        SettingsScreen(
+                            navController = navController,
+                            settingsViewModel = settingsViewModel,
+                            playerViewModel = playerViewModel
+                        )
+                    }
                 }
 
                 if (shouldBlur) {
                     Spacer(modifier = Modifier
                         .fillMaxSize()
-                        .clickable { })
+                        .clickable { }
+                    )
                 }
             }
         }

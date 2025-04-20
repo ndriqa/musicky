@@ -33,6 +33,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ndriqa.musicky.core.data.VisualizerType
+import com.ndriqa.musicky.core.preferences.DataStoreManager
 import com.ndriqa.musicky.core.util.helpers.MockHelper
 import com.ndriqa.musicky.features.player.components.MusicDisc
 import com.ndriqa.musicky.features.player.components.SongArtworkImage
@@ -40,6 +41,7 @@ import com.ndriqa.musicky.features.player.components.SongControls
 import com.ndriqa.musicky.features.player.components.SongHeaderInfo
 import com.ndriqa.musicky.features.player.components.SongTopBar
 import com.ndriqa.musicky.features.player.components.SongVisualizer
+import com.ndriqa.musicky.features.settings.SettingsViewModel
 import com.ndriqa.musicky.navigation.Screens
 import com.ndriqa.musicky.ui.theme.DiscSize
 import com.ndriqa.musicky.ui.theme.DiscSizeOffsetMax
@@ -57,7 +59,8 @@ fun HustlePlayer(
     modifier: Modifier = Modifier,
     isVisible: Boolean = false,
     isExpanded: Boolean = false,
-    playerViewModel: PlayerViewModel = hiltViewModel(),
+    playerViewModel: PlayerViewModel,
+    settingsViewModel: SettingsViewModel
 ) {
     val context = LocalContext.current
     val playerShape = if (isExpanded) RoundedCornerShape(PaddingDefault) else CircleShape
@@ -65,13 +68,12 @@ fun HustlePlayer(
     val waveform by playerViewModel.waveform.collectAsState()
     val audioFeatures by playerViewModel.audioFeatures.collectAsState()
     val fftFeatures by playerViewModel.fftFeatures.collectAsState()
-    val currentSong by remember { derivedStateOf { playState.currentSong } }
-
-    var selectedVisualizerType: VisualizerType by remember { mutableStateOf(VisualizerType.LineCenter) }
-
+    val preferredVisualizer by settingsViewModel.preferredVisualizer.collectAsState()
     val averageSongEnergy by playerViewModel.averageSongEnergy.collectAsState()
-    val currentEnergy = waveform.map { abs(it.toInt()) }.average().toInt().toByte()
     val pulse by playerViewModel.pulse.collectAsState(false)
+
+    val currentSong by remember { derivedStateOf { playState.currentSong } }
+    val currentEnergy = waveform.map { abs(it.toInt()) }.average().toInt().toByte()
 
     val gestureModifier = Modifier.pointerInput(Unit) {
         detectVerticalDragGestures { change, dragAmount ->
@@ -91,13 +93,9 @@ fun HustlePlayer(
     val discSize = DiscSize + discSizeOffset
     val animatedDiscSize by animateDpAsState(targetValue = discSize)
 
-    fun onVisualizerTypeChange(visualizerType: VisualizerType) {
-        selectedVisualizerType = visualizerType
-    }
-
     fun onSettingsClick() {
         onExpandedUpdate(false)
-        navController.navigate(Screens.Settings)
+        navController.navigate(Screens.Settings) { launchSingleTop = true }
     }
 
     LaunchedEffect(currentSong) {
@@ -134,9 +132,9 @@ fun HustlePlayer(
                     topBar = {
                         if (isExpanded) {
                             SongTopBar(
-                                selectedVisualizerType = selectedVisualizerType,
+                                selectedVisualizerType = preferredVisualizer,
                                 onSettingsClick = ::onSettingsClick,
-                                onVisualizerChange = ::onVisualizerTypeChange,
+                                onVisualizerChange = settingsViewModel::updateVisualizerType,
                             )
                         }
                     }
@@ -158,7 +156,7 @@ fun HustlePlayer(
                                     waveform = waveform,
                                     audioFeatures = audioFeatures,
                                     fftFeatures = fftFeatures,
-                                    type = selectedVisualizerType
+                                    type = preferredVisualizer
                                 )
                             }
                             SongControls(
@@ -185,6 +183,8 @@ private fun HustlePlayerCompactPreview() {
     val playerViewModel = PlayerViewModel(context).apply {
         updatePlayingStateTesting(MockHelper.getMockPlayingState())
     }
+    val dataStoreManager = DataStoreManager(context)
+    val settingsViewModel = SettingsViewModel(dataStoreManager)
     val navController = rememberNavController()
 
     MusickyTheme {
@@ -194,7 +194,8 @@ private fun HustlePlayerCompactPreview() {
             navController = navController,
             isVisible = true,
             isExpanded = false,
-            playerViewModel = playerViewModel
+            playerViewModel = playerViewModel,
+            settingsViewModel = settingsViewModel
         )
     }
 }
@@ -206,6 +207,8 @@ private fun HustlePlayerExpandedPreview() {
     val playerViewModel = PlayerViewModel(context).apply {
         updatePlayingStateTesting(MockHelper.getMockPlayingState())
     }
+    val dataStoreManager = DataStoreManager(context)
+    val settingsViewModel = SettingsViewModel(dataStoreManager)
     val navController = rememberNavController()
 
     MusickyTheme {
@@ -219,7 +222,8 @@ private fun HustlePlayerExpandedPreview() {
             ),
             isVisible = true,
             isExpanded = true,
-            playerViewModel = playerViewModel
+            playerViewModel = playerViewModel,
+            settingsViewModel = settingsViewModel
         )
     }
 }

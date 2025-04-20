@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Button
@@ -19,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.ndriqa.musicky.core.data.VisualizerType
+import com.ndriqa.musicky.ui.theme.PaddingCompact
 
 @Composable
 fun SongTopBar(
@@ -44,7 +46,8 @@ fun SongTopBar(
 
             DropdownMenu(
                 expanded = showVisualSelectorDropdown,
-                onDismissRequest = { showVisualSelectorDropdown = false }
+                onDismissRequest = { showVisualSelectorDropdown = false },
+                shape = RoundedCornerShape(PaddingCompact)
             ) {
                 VisualizerType.entries.forEach { type ->
                     DropdownMenuItem(

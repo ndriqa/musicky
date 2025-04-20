@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.Album
 import com.ndriqa.musicky.core.data.Song
+import com.ndriqa.musicky.core.preferences.DataStoreManager
 import com.ndriqa.musicky.core.util.extensions.contains
 import com.ndriqa.musicky.core.util.extensions.simpleLog
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,7 +32,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SongsViewModel @Inject constructor(
-    @ApplicationContext context: Context
+    @ApplicationContext context: Context,
+    private val dataStoreManager: DataStoreManager
 ): ViewModel() {
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     private val _searchText = MutableStateFlow("")
@@ -53,6 +55,9 @@ class SongsViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val requestScopedDelete = MutableSharedFlow<Uri?>()
+
+    val minAudioLength = dataStoreManager.minAudioLength
+        .stateIn(viewModelScope, SharingStarted.Eagerly, DataStoreManager.DEFAULT_MIN_AUDIO_LENGTH)
 
     fun startLoadingSongs(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -95,7 +100,7 @@ class SongsViewModel @Inject constructor(
 
             while (cursor.moveToNext()) {
                 val duration = cursor.getLong(durationCol)
-                if (duration < 45_000) continue // skip short clips
+                if (duration < minAudioLength.value * 1000) continue // skip short clips
 
                 val potentialArtworkUri = ContentUris.withAppendedId(
                     /* contentUri = */ "content://media/external/audio/albumart".toUri(),

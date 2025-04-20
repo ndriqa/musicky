@@ -54,8 +54,8 @@ import com.ndriqa.musicky.ui.theme.PaddingCompact
 @Composable
 fun SongsScreen(
     modifier: Modifier = Modifier,
-    songsViewModel: SongsViewModel = hiltViewModel(),
-    playerViewModel: PlayerViewModel = hiltViewModel()
+    songsViewModel: SongsViewModel,
+    playerViewModel: PlayerViewModel
 ) {
     val allSongs by songsViewModel.allSongs.collectAsState()
     val songs by songsViewModel.songs.collectAsState()
@@ -113,20 +113,6 @@ fun SongsScreen(
         if (isSearchVisible) {
             focusRequester.requestFocus()
         } else clearSearchFocus()
-    }
-
-    DisposableEffect(Unit) {
-        playerViewModel.apply {
-            registerPlayerUpdates(context)
-            registerVisualizerUpdates(context)
-        }
-
-        onDispose {
-            playerViewModel.apply {
-                unregisterPlayerUpdates(context)
-                unregisterVisualizerUpdates(context)
-            }
-        }
     }
 
     LaunchedEffect(requestedSongToBeDeleted) {
