@@ -196,10 +196,21 @@ class PlayerViewModel @Inject constructor(
 
     fun seekTo(context: Context, positionMillis: Int) {
         Intent(context, PlayerService::class.java)
-            .apply {
-                action = PlayerService.ACTION_SEEK_TO
-                putExtra(PlayerService.EXTRA_SEEK_POSITION, positionMillis)
-            }.also { context.startService(it) }
+            .setAction(PlayerService.ACTION_SEEK_TO)
+            .putExtra(PlayerService.EXTRA_SEEK_POSITION, positionMillis)
+            .also { context.startService(it) }
+    }
+
+    fun toggleShuffle(context: Context) {
+        Intent(context, PlayerService::class.java)
+            .setAction(PlayerService.ACTION_TOGGLE_SHUFFLE)
+            .also { context.startService(it) }
+    }
+
+    fun toggleRepeat(context: Context) {
+        Intent(context, PlayerService::class.java)
+            .setAction(PlayerService.ACTION_TOGGLE_REPEAT)
+            .also { context.startService(it) }
     }
 
     fun setQueue(songs: List<Song>) {

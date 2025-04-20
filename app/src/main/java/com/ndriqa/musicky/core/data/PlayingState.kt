@@ -7,7 +7,9 @@ import kotlinx.parcelize.Parcelize
 data class PlayingState(
     val isPlaying: Boolean = false,
     val currentSong: Song? = null,
+    val nextSong: Song? = null,
     val currentPosition: Long = 0L, // in ms
-    val bufferedPosition: Long = 0L, // optional: if you're streaming
-    val isPrepared: Boolean = false
+    val isShuffleEnabled: Boolean = false,
+    val repeatMode: RepeatMode = RepeatMode.All,
+    val timeLeft: Long? = null // null if timer is not enabled
 ): Parcelable

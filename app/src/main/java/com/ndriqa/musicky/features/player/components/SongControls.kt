@@ -9,14 +9,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.ShuffleOn
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Button
@@ -31,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -47,7 +49,9 @@ internal fun ColumnScope.SongControls(
     onPlayPauseClicked: () -> Unit,
     onNextClicked: () -> Unit,
     onPrevClicked: () -> Unit,
-    onSeek: (Float) -> Unit
+    onSeek: (Float) -> Unit,
+    onShuffleClicked: () -> Unit,
+    onRepeatClicked: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -114,27 +118,52 @@ internal fun ColumnScope.SongControls(
         }
 
         Row {
-            Button(onClick = onPrevClicked) {
-                Icon(
-                    imageVector = Icons.Rounded.SkipPrevious,
-                    contentDescription = null
-                )
-            }
-            Button(onClick = onPlayPauseClicked) {
-                Icon(
-                    imageVector =
-                        if (playState.isPlaying) Icons.Rounded.Pause
-                        else Icons.Rounded.PlayArrow,
-                    contentDescription = null
-                )
-            }
-            Button(onClick = onNextClicked) {
-                Icon(
-                    imageVector = Icons.Rounded.SkipNext,
-                    contentDescription = null
-                )
-            }
+            val shuffleIcon =
+                if (playState.isShuffleEnabled) Icons.Rounded.ShuffleOn
+                else Icons.Rounded.Shuffle
+
+            val playPauseIcon =
+                if (playState.isPlaying) Icons.Rounded.Pause
+                else Icons.Rounded.PlayArrow
+
+            ControlButton(
+                onClick = onShuffleClicked,
+                icon = shuffleIcon
+            )
+            ControlButton(
+                onClick = onPrevClicked,
+                icon = Icons.Rounded.SkipPrevious
+            )
+            ControlButton(
+                onClick = onPlayPauseClicked,
+                icon = playPauseIcon
+            )
+            ControlButton(
+                onClick = onNextClicked,
+                icon = Icons.Rounded.SkipNext
+            )
+            ControlButton(
+                onClick = onRepeatClicked,
+                icon = playState.repeatMode.icon
+            )
         }
+    }
+}
+
+@Composable
+private fun RowScope.ControlButton(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.weight(1f)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null
+        )
     }
 }
 
@@ -148,7 +177,9 @@ private fun SongControlPreview() {
                 onPlayPauseClicked = {  },
                 onNextClicked = {  },
                 onPrevClicked = {  },
-                onSeek = {  }
+                onSeek = {  },
+                onShuffleClicked = {  },
+                onRepeatClicked = {  }
             )
         }
     }

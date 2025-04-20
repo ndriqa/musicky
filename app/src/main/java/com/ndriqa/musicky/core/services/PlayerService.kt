@@ -15,6 +15,7 @@ import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationCompat
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.PlayingState
+import com.ndriqa.musicky.core.data.RepeatMode
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.util.extensions.loadAsBitmap
 import com.ndriqa.musicky.core.util.helpers.AudioAnalyzer
@@ -38,20 +39,39 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     private var currentIndex = -1
     private var progressJob: Job? = null
 
-    private val queue = mutableListOf<Song>()
+    private var shuffleEnabled = false
+    private var repeatMode: RepeatMode = RepeatMode.All
+
+    private val originalQueue = mutableListOf<Song>()
+    private val shuffledQueue = mutableListOf<Song>()
+
+    private val activeQueue: List<Song>
+        get() = if (shuffleEnabled) shuffledQueue else originalQueue
+
     private val playState: PlayingState?
         get() {
-            val song = queue.getOrNull(currentIndex) ?: return null
+            val song = activeQueue.getOrNull(currentIndex) ?: return null
+
+            val nextIndex = when (repeatMode) {
+                RepeatMode.All -> (currentIndex + 1) % activeQueue.size
+                RepeatMode.One -> currentIndex
+                RepeatMode.None -> null
+            }
+            val nextSong = nextIndex?.let { activeQueue.getOrNull(it) }
             val isPlaying =
                 try { mediaPlayer?.isPlaying == true }
-                catch (e: IllegalStateException) { false }
+                catch (_: IllegalStateException) { false }
             val currentPosition =
                 try { mediaPlayer?.currentPosition?.toLong() ?: 0L }
-                catch (e: IllegalStateException) { 0L }
+                catch (_: IllegalStateException) { 0L }
 
             return PlayingState(
                 currentSong = song,
+                nextSong = nextSong,
                 isPlaying = isPlaying,
+                isShuffleEnabled = shuffleEnabled,
+                repeatMode = repeatMode,
+                timeLeft = null,
                 currentPosition = currentPosition
             )
         }
@@ -72,6 +92,8 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
                 override fun onSkipToNext() = next()
                 override fun onSkipToPrevious() = previous()
                 override fun onSeekTo(pos: Long) = seekTo(pos.toInt())
+                override fun onSetRepeatMode(repeatMode: Int) = toggleRepeatMode(repeatMode)
+                override fun onSetShuffleMode(shuffleMode: Int) = toggleShuffleMode(shuffleMode)
             })
         }
     }
@@ -83,13 +105,28 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
             ACTION_PLAY -> startPlayback(actualIntent)
             ACTION_PAUSE -> pause()
             ACTION_RESUME -> resume()
-            ACTION_NEXT -> next()
-            ACTION_PREVIOUS -> previous()
+            ACTION_NEXT -> next(manualClick = true)
+            ACTION_PREVIOUS -> previous(manualClick = true)
             ACTION_STOP -> stopPlayback()
             ACTION_SEEK_TO -> seekTo(actualIntent)
+            ACTION_TOGGLE_SHUFFLE -> toggleShuffle()
+            ACTION_TOGGLE_REPEAT -> toggleRepeat()
         }
 
         return START_STICKY
+    }
+
+    private fun toggleRepeatMode(repeatMode: Int) {
+        val newRepeatMode = when(repeatMode) {
+            PlaybackStateCompat.REPEAT_MODE_ALL -> RepeatMode.All
+            PlaybackStateCompat.REPEAT_MODE_ONE -> RepeatMode.One
+            else -> RepeatMode.None
+        }
+        toggleRepeat(newRepeatMode = newRepeatMode)
+    }
+
+    private fun toggleShuffleMode(shuffleMode: Int) {
+        toggleShuffle(enabled = shuffleMode == PlaybackStateCompat.SHUFFLE_MODE_ALL)
     }
 
     private fun seekTo(intent: Intent) {
@@ -107,12 +144,19 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         val songPath = intent.getStringExtra(EXTRA_SONG_PATH)
 
         if (!newQueue.isNullOrEmpty()) {
-            queue.clear()
-            queue.addAll(newQueue)
+            originalQueue.clear()
+            originalQueue.addAll(newQueue)
+
+            if (shuffleEnabled) {
+                shuffledQueue.clear()
+                shuffledQueue.addAll(originalQueue.shuffled())
+            }
+
+            currentIndex = 0
         }
 
         songPath?.let { path ->
-            val index = queue.indexOfFirst { it.data == path }
+            val index = activeQueue.indexOfFirst { it.data == path }
             if (index != -1) {
                 currentIndex = index
                 playCurrent()
@@ -162,32 +206,55 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
 
             startForeground(NOTIFICATION_ID, buildSongNotification(state))
             refreshNotificationAndBroadcast()
-
         } catch (e: Exception) {
             Timber.tag("PlayerService").e(e, "Song file missing or can't be played: ${song.data}")
             Timber.tag("PlayerService").d("Trying the next song now!")
 
-            if (queue.isNotEmpty()) {
+            if (activeQueue.isNotEmpty()) {
                 currentIndex = if (goingForward) {
-                    (currentIndex + 1) % queue.size
+                    (currentIndex + 1) % activeQueue.size
                 } else {
-                    if (currentIndex - 1 < 0) queue.lastIndex else currentIndex - 1
+                    if (currentIndex - 1 < 0) activeQueue.lastIndex else currentIndex - 1
                 }
                 playCurrent(goingForward)
             }
         }
     }
 
-    private fun next() {
-        if (queue.isEmpty()) return
-        currentIndex = (currentIndex + 1) % queue.size
+    private fun next(manualClick: Boolean = false) {
+        if (activeQueue.isEmpty()) return
+        currentIndex = if (manualClick) {
+            (currentIndex + 1) % activeQueue.size
+        } else when(repeatMode) {
+            RepeatMode.All -> (currentIndex + 1) % activeQueue.size
+            RepeatMode.One -> currentIndex
+            RepeatMode.None -> if (currentIndex < activeQueue.lastIndex) currentIndex + 1 else return
+        }
         playCurrent(goingForward = true)
     }
 
-    private fun previous() {
-        if (queue.isEmpty()) return
-        currentIndex = if (currentIndex - 1 < 0) queue.lastIndex else currentIndex - 1
+    private fun previous(manualClick: Boolean = false) {
+        if (activeQueue.isEmpty()) return
+        currentIndex = if (currentIndex - 1 < 0) activeQueue.lastIndex else currentIndex - 1
         playCurrent(goingForward = false)
+    }
+
+    private fun toggleRepeat(newRepeatMode: RepeatMode? = null) {
+        repeatMode = newRepeatMode ?: repeatMode.calculateNextMode()
+        refreshNotificationAndBroadcast()
+    }
+
+    private fun toggleShuffle(enabled: Boolean? = null) {
+        val currentSong = playState?.currentSong ?: return
+        shuffleEnabled = enabled ?: !shuffleEnabled
+
+        if (shuffleEnabled) {
+            shuffledQueue.clear()
+            shuffledQueue.addAll(originalQueue.shuffled())
+        }
+
+        currentIndex = activeQueue.indexOfFirst { it.data == currentSong.data }
+        refreshNotificationAndBroadcast()
     }
 
     override fun onPrepared(mp: MediaPlayer) {
@@ -222,7 +289,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun sendStateBroadcast() {
-        val song = queue.getOrNull(currentIndex) ?: return
+        val song = activeQueue.getOrNull(currentIndex) ?: return
 
         Intent(ACTION_BROADCAST_UPDATE).apply {
             setPackage(packageName)
@@ -239,32 +306,39 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         val progress = state.currentPosition.toInt()
 
         val playIconResId = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play
+        val shuffleIconResId = if (state.isShuffleEnabled) R.drawable.ic_shuffle_on else R.drawable.ic_shuffle_off
+
+        val shuffleAction = Intent(this, PlayerService::class.java)
+            .apply { action = ACTION_TOGGLE_SHUFFLE }
+            .let { intent -> PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_IMMUTABLE) }
+            .let { pendingIntent -> NotificationCompat.Action(shuffleIconResId, "", pendingIntent) }
         val prevAction = Intent(this, PlayerService::class.java)
             .apply { action = ACTION_PREVIOUS }
-            .let { intent -> PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_IMMUTABLE) }
+            .let { intent -> PendingIntent.getService(this, 1, intent, PendingIntent.FLAG_IMMUTABLE) }
             .let { pendingIntent -> NotificationCompat.Action(R.drawable.ic_prev, "", pendingIntent) }
         val playPauseAction = Intent(this, PlayerService::class.java)
             .apply { action = if (isPlaying) ACTION_PAUSE else ACTION_RESUME }
-            .let { intent -> PendingIntent.getService(this, 1, intent, PendingIntent.FLAG_IMMUTABLE) }
+            .let { intent -> PendingIntent.getService(this, 2, intent, PendingIntent.FLAG_IMMUTABLE) }
             .let { pendingIntent -> NotificationCompat.Action(playIconResId, "", pendingIntent) }
         val nextAction = Intent(this, PlayerService::class.java)
             .apply { action = ACTION_NEXT }
-            .let { intent -> PendingIntent.getService(this, 2, intent, PendingIntent.FLAG_IMMUTABLE) }
+            .let { intent -> PendingIntent.getService(this, 3, intent, PendingIntent.FLAG_IMMUTABLE) }
             .let { pendingIntent -> NotificationCompat.Action(R.drawable.ic_next, "", pendingIntent) }
         val cancelAction = Intent(this, PlayerService::class.java)
             .apply { action = ACTION_STOP }
-            .let { intent -> PendingIntent.getService(this, 3, intent, PendingIntent.FLAG_IMMUTABLE) }
+            .let { intent -> PendingIntent.getService(this, 4, intent, PendingIntent.FLAG_IMMUTABLE) }
 
         val mediaStyle = MediaNotificationCompat.MediaStyle()
-            .setShowActionsInCompactView(0, 1, 2)
+            .setShowActionsInCompactView(0, 1, 2, 4)
             .setShowCancelButton(true)
             .setCancelButtonIntent(cancelAction)
             .setMediaSession(mediaSession.sessionToken)
 
         return NotificationCompat.Builder(this, channel.id)
-            .setContentTitle(song?.title ?: "No song playing")
-            .setContentText(song?.artist ?: "Unknown")
+            .setContentTitle(song?.title ?: getString(R.string.no_song_playing))
+            .setContentText(song?.artist ?: getString(R.string.unknown))
             .setSmallIcon(android.R.drawable.ic_media_play)
+            .addAction(shuffleAction)
             .addAction(prevAction)
             .addAction(playPauseAction)
             .addAction(nextAction)
@@ -323,11 +397,13 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         val playbackState = PlaybackStateCompat.Builder()
             .setActions(
                 PlaybackStateCompat.ACTION_PLAY or
-                        PlaybackStateCompat.ACTION_PAUSE or
-                        PlaybackStateCompat.ACTION_PLAY_PAUSE or
-                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-                        PlaybackStateCompat.ACTION_SEEK_TO
+                PlaybackStateCompat.ACTION_PAUSE or
+                PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+                PlaybackStateCompat.ACTION_SEEK_TO or
+                PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE or
+                PlaybackStateCompat.ACTION_STOP
             )
             .setState(
                 /* state = */ mediaState,
@@ -384,6 +460,11 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         }
     }
 
+    fun RepeatMode.calculateNextMode(): RepeatMode {
+        val nextIndex = (ordinal + 1) % RepeatMode.entries.size
+        return RepeatMode.entries[nextIndex]
+    }
+
     companion object {
         const val ACTION_PLAY = "com.ndriqa.action.PLAY"
         const val ACTION_PAUSE = "com.ndriqa.action.PAUSE"
@@ -393,6 +474,9 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         const val ACTION_STOP = "com.ndriqa.action.STOP"
         const val ACTION_SEEK_TO = "com.ndriqa.action.SEEK_TO"
 
+        const val ACTION_TOGGLE_SHUFFLE = "com.ndriqa.action.TOGGLE_SHUFFLE"
+        const val ACTION_TOGGLE_REPEAT = "com.ndriqa.action.TOGGLE_REPEAT"
+
         const val ACTION_BROADCAST_UPDATE = "com.ndriqa.action.UPDATE"
         const val ACTION_VISUALIZER_UPDATE = "com.ndriqa.action.VISUALIZER_UPDATE"
 
@@ -400,12 +484,10 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         const val EXTRA_PLAYING_STATE = "EXTRA_PLAYING_STATE"
         const val EXTRA_QUEUE = "EXTRA_QUEUE"
         const val EXTRA_SEEK_POSITION = "EXTRA_SEEK_POSITION"
+
         const val VISUALIZER_WAVEFORM = "VISUALIZER_WAVEFORM"
         const val VISUALIZER_AUDIO_FEATURES = "VISUALIZER_AUDIO_FEATURES"
         const val VISUALIZER_FFT_FEATURES = "VISUALIZER_FFT_FEATURES"
-
-        private const val VISUALIZER_RETRY_ATTEMPTS = 10 //times
-        private const val VISUALIZER_RETRY_INTERVALS = 50L //ms
 
         const val NOTIFICATION_ID = 1001
     }

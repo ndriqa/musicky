@@ -15,8 +15,6 @@ object MockHelper {
             isPlaying = true,
             currentSong = song,
             currentPosition = song.duration / 3,
-            bufferedPosition = 1,
-            isPrepared = true
         )
     }
 
