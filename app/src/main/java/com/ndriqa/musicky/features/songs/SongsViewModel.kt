@@ -15,6 +15,7 @@ import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.preferences.DataStoreManager
 import com.ndriqa.musicky.core.util.extensions.contains
 import com.ndriqa.musicky.core.util.extensions.simpleLog
+import com.ndriqa.musicky.data.repositories.SongsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +34,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SongsViewModel @Inject constructor(
     @ApplicationContext context: Context,
-    private val dataStoreManager: DataStoreManager
+    private val dataStoreManager: DataStoreManager,
+    private val songsRepository: SongsRepository
 ): ViewModel() {
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     private val _searchText = MutableStateFlow("")
@@ -61,11 +63,20 @@ class SongsViewModel @Inject constructor(
 
     fun startLoadingSongs(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
+            getCachedSongs().let { cachedSongs ->
+                _songs.value = cachedSongs
+                simpleLog("Cached songs found: ${cachedSongs.size}")
+            }
             getAllSongs(context).let { foundSongs ->
-                _songs.update { foundSongs }
+                _songs.value = foundSongs
+                songsRepository.syncSongs(foundSongs)
                 simpleLog("Songs found: ${foundSongs.size}")
             }
         }
+    }
+
+    private suspend fun getCachedSongs(): List<Song> {
+        return songsRepository.getAllSongs()
     }
 
     private fun getAllSongs(context: Context): List<Song> {
@@ -154,6 +165,8 @@ class SongsViewModel @Inject constructor(
 
     fun tryDeleteSongFile(context: Context, song: Song) {
         viewModelScope.launch {
+            songsRepository.deleteSong(song)
+
             val songUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, song.id)
             if (deleteSongFile(context, songUri)) {
                 /**
