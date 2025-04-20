@@ -213,11 +213,22 @@ class PlayerViewModel @Inject constructor(
             .also { context.startService(it) }
     }
 
+    fun toggleTimer(context: Context, time: Long? = null) { // if null, stop timer
+        Intent(context, PlayerService::class.java)
+            .setAction(PlayerService.ACTION_TOGGLE_TIMER)
+            .apply { time?.let { putExtra(PlayerService.EXTRA_TIMER_MILLIS, it) } }
+            .also { context.startService(it) }
+    }
+
     fun setQueue(songs: List<Song>) {
         _queue.value = songs
     }
 
     companion object {
         private const val PULSE_THRESHOLD = 15
+
+        internal const val TIMER_MINIMUM_MIN = 10f
+        internal const val TIMER_MAXIMUM_MIN = 60f
+        internal const val TIMER_STEPS = 9
     }
 }

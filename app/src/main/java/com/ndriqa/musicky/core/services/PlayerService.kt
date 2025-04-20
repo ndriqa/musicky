@@ -36,9 +36,11 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     private val fftAnalyzer = FftAnalyzer()
     private val audioAnalyzer = AudioAnalyzer()
 
-    private var currentIndex = -1
     private var progressJob: Job? = null
+    private var timerJob: Job? = null
 
+    private var autoStopTimeLeft: Long? = null
+    private var currentIndex = -1
     private var shuffleEnabled = false
     private var repeatMode: RepeatMode = RepeatMode.All
 
@@ -71,7 +73,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
                 isPlaying = isPlaying,
                 isShuffleEnabled = shuffleEnabled,
                 repeatMode = repeatMode,
-                timeLeft = null,
+                autoStopTimeLeft = autoStopTimeLeft,
                 currentPosition = currentPosition
             )
         }
@@ -111,9 +113,20 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
             ACTION_SEEK_TO -> seekTo(actualIntent)
             ACTION_TOGGLE_SHUFFLE -> toggleShuffle()
             ACTION_TOGGLE_REPEAT -> toggleRepeat()
+            ACTION_TOGGLE_TIMER -> toggleTimer(actualIntent)
         }
 
         return START_STICKY
+    }
+
+    private fun toggleTimer(intent: Intent) {
+        val timerMillis = intent.getLongExtra(EXTRA_TIMER_MILLIS, 0L)
+        if (timerMillis > 0L) {
+            startSleepTimer(timerMillis)
+        } else {
+            cancelSleepTimer()
+        }
+        refreshNotificationAndBroadcast()
     }
 
     private fun toggleRepeatMode(repeatMode: Int) {
@@ -349,12 +362,37 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
             .build()
     }
 
+    private fun startSleepTimer(duration: Long) {
+        autoStopTimeLeft = null
+        timerJob?.cancel()
+        timerJob = CoroutineScope(Dispatchers.Default).launch {
+            var timeLeft = duration
+            autoStopTimeLeft = timeLeft
+
+            while (isActive && timeLeft > 0) {
+                delay(REFRESH_FREQUENCY)
+                timeLeft -= REFRESH_FREQUENCY
+                autoStopTimeLeft = timeLeft
+                Timber.d("Sleep timer ticking: $timeLeft ms left")
+                refreshNotificationAndBroadcast()
+            }
+
+            if (isActive) {
+                pause()
+                autoStopTimeLeft = null
+                Timber.d("Sleep timer done. Stopped playback.")
+            }
+
+            refreshNotificationAndBroadcast()
+        }
+    }
+
     private fun startProgressUpdates() {
         progressJob?.cancel()
         progressJob = CoroutineScope(Dispatchers.Default).launch {
             while (isActive) {
                 refreshNotificationAndBroadcast()
-                delay(1000L)
+                delay(REFRESH_FREQUENCY)
             }
         }
     }
@@ -362,6 +400,12 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     private fun stopProgressUpdates() {
         progressJob?.cancel()
         progressJob = null
+    }
+
+    private fun cancelSleepTimer() {
+        timerJob?.cancel()
+        timerJob = null
+        autoStopTimeLeft = null
     }
 
     private fun refreshNotificationAndBroadcast() {
@@ -466,6 +510,8 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     }
 
     companion object {
+        private const val REFRESH_FREQUENCY = 1000L
+
         const val ACTION_PLAY = "com.ndriqa.action.PLAY"
         const val ACTION_PAUSE = "com.ndriqa.action.PAUSE"
         const val ACTION_RESUME = "com.ndriqa.action.RESUME"
@@ -476,6 +522,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
 
         const val ACTION_TOGGLE_SHUFFLE = "com.ndriqa.action.TOGGLE_SHUFFLE"
         const val ACTION_TOGGLE_REPEAT = "com.ndriqa.action.TOGGLE_REPEAT"
+        const val ACTION_TOGGLE_TIMER = "com.ndriqa.action.TOGGLE_TIMER"
 
         const val ACTION_BROADCAST_UPDATE = "com.ndriqa.action.UPDATE"
         const val ACTION_VISUALIZER_UPDATE = "com.ndriqa.action.VISUALIZER_UPDATE"
@@ -484,6 +531,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         const val EXTRA_PLAYING_STATE = "EXTRA_PLAYING_STATE"
         const val EXTRA_QUEUE = "EXTRA_QUEUE"
         const val EXTRA_SEEK_POSITION = "EXTRA_SEEK_POSITION"
+        const val EXTRA_TIMER_MILLIS = "EXTRA_TIMER_MILLIS"
 
         const val VISUALIZER_WAVEFORM = "VISUALIZER_WAVEFORM"
         const val VISUALIZER_AUDIO_FEATURES = "VISUALIZER_AUDIO_FEATURES"

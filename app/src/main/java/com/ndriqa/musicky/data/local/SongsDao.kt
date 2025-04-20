@@ -10,7 +10,7 @@ import com.ndriqa.musicky.core.data.Song
 @Dao
 interface SongsDao {
 
-    @Query("SELECT * FROM songs")
+    @Query("SELECT * FROM songs ORDER BY dateModified DESC")
     suspend fun getAllSongs(): List<Song>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

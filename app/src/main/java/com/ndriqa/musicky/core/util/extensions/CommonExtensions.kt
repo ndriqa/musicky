@@ -162,3 +162,7 @@ inline fun <reified T : Parcelable> Intent.getSafeParcelableExtra(key: String): 
         getParcelableExtra(key)
     }
 }
+
+inline fun <T> T?.ifNull(producer: () -> T): T {
+    return this ?: producer()
+}

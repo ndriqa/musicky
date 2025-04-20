@@ -45,8 +45,6 @@ import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 import kotlin.math.abs
 
-internal const val MAX_BYTE_VAL = 128
-
 @Composable
 fun HustlePlayer(
     hasVisualizerRecordingPermission: Boolean,
@@ -65,11 +63,8 @@ fun HustlePlayer(
     val audioFeatures by playerViewModel.audioFeatures.collectAsState()
     val fftFeatures by playerViewModel.fftFeatures.collectAsState()
     val preferredVisualizer by settingsViewModel.preferredVisualizer.collectAsState()
-    val averageSongEnergy by playerViewModel.averageSongEnergy.collectAsState()
-    val pulse by playerViewModel.pulse.collectAsState(false)
 
     val currentSong by remember { derivedStateOf { playState.currentSong } }
-    val currentEnergy = waveform.map { abs(it.toInt()) }.average().toInt().toByte()
 
     val gestureModifier = Modifier.pointerInput(Unit) {
         detectVerticalDragGestures { change, dragAmount ->
@@ -92,6 +87,10 @@ fun HustlePlayer(
     fun onSettingsClick() {
         onExpandedUpdate(false)
         navController.navigate(Screens.Settings) { launchSingleTop = true }
+    }
+
+    fun toggleTimer(millis: Long?) {
+        playerViewModel.toggleTimer(context, millis)
     }
 
     LaunchedEffect(currentSong) {
@@ -128,8 +127,10 @@ fun HustlePlayer(
                     topBar = {
                         if (isExpanded) {
                             SongTopBar(
+                                playingState = playState,
                                 selectedVisualizerType = preferredVisualizer,
                                 onSettingsClick = ::onSettingsClick,
+                                onTimeSelected = ::toggleTimer,
                                 onVisualizerChange = settingsViewModel::updateVisualizerType,
                             )
                         }
