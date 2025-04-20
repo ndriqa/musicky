@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.util.helpers.MockHelper
 import com.ndriqa.musicky.ui.theme.MusickyTheme
+import com.ndriqa.musicky.ui.theme.PaddingCompact
 import com.ndriqa.musicky.ui.theme.PaddingMini
 
 @Composable
@@ -24,8 +26,8 @@ internal fun ColumnScope.SongHeaderInfo(song: Song) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .weight(1F)
-            .heightIn(max = 200.dp),
+            .heightIn(max = 200.dp)
+            .padding(PaddingCompact),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(PaddingMini, Alignment.CenterVertically)
     ) {

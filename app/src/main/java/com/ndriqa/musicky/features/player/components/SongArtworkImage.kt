@@ -5,8 +5,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MusicNote
@@ -25,6 +29,7 @@ import com.ndriqa.musicky.core.util.helpers.MockHelper
 import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeBig
 import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeCompact
 import com.ndriqa.musicky.ui.theme.MusickyTheme
+import com.ndriqa.musicky.ui.theme.PaddingCompact
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 
 @Composable
@@ -34,13 +39,20 @@ internal fun ColumnScope.SongArtworkImage(artworkImageUri: Uri?) {
 
     Box(
         modifier = Modifier
-            .weight(1f),
+            .fillMaxWidth()
+            .weight(1f)
+            .padding(PaddingCompact),
         contentAlignment = Alignment.Center
 //            .scale(animatedScale)
     ) {
         Box(
             modifier = Modifier
-                .size(MusicIconArtworkSizeBig)
+                .aspectRatio(1f)
+                .fillMaxSize()
+                .sizeIn(
+                    minHeight = MusicIconArtworkSizeBig,
+                    minWidth = MusicIconArtworkSizeBig
+                )
                 .clip(shape = artworkShape)
                 .background(
                     color = MaterialTheme.colorScheme.primaryContainer,

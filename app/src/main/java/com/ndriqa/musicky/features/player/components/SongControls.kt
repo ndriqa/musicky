@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
@@ -40,6 +42,7 @@ import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.util.extensions.toFormattedTime
 import com.ndriqa.musicky.core.util.helpers.MockHelper
 import com.ndriqa.musicky.ui.theme.MusickyTheme
+import com.ndriqa.musicky.ui.theme.PaddingCompact
 import com.ndriqa.musicky.ui.theme.PaddingHalf
 import com.ndriqa.musicky.ui.theme.SpaceMonoFontFamily
 
@@ -56,7 +59,7 @@ internal fun ColumnScope.SongControls(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .weight(1F),
+            .padding(PaddingCompact),
         verticalArrangement = Arrangement.spacedBy(PaddingHalf, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -158,7 +161,8 @@ private fun RowScope.ControlButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.weight(1f)
+        modifier = modifier.weight(1f),
+        contentPadding = PaddingValues()
     ) {
         Icon(
             imageVector = icon,

@@ -11,7 +11,6 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.compose.ui.graphics.Path
 import androidx.lifecycle.ViewModel
-import com.ndriqa.musicky.core.data.FftFeatures
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.data.VisualizerType
 import timber.log.Timber
@@ -19,6 +18,7 @@ import java.time.ZonedDateTime
 import java.util.Locale
 import kotlin.math.absoluteValue
 import kotlin.math.cos
+import kotlin.math.min
 import kotlin.math.sin
 
 fun Long.toFormattedTime(showMillis: Boolean = false): String {
@@ -128,9 +128,9 @@ fun ByteArray.waveformToPath(
         }
 
         VisualizerType.Circular -> {
-            val maxRingSize = if (width > height) height else width
-            val baseRadius = maxRingSize / 4
-            val radiusVariation = maxRingSize / 4
+            val maxRadius = min(width, height) / 2  // half of the inside square
+            val baseRadius = maxRadius * 2 / 3      // 2/3 of max radius
+            val radiusVariation = maxRadius / 3     // 1/3 of max radius
             val pointCount = size
             val angleStep = (2 * Math.PI / pointCount).toFloat()
 
@@ -150,8 +150,6 @@ fun ByteArray.waveformToPath(
             path.close()
         }
     }
-
-
 
     return path
 }

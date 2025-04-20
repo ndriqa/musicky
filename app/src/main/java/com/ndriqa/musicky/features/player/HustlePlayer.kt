@@ -45,7 +45,7 @@ import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 import kotlin.math.abs
 
-internal const val MAX_BYTE_VAL = 256
+internal const val MAX_BYTE_VAL = 128
 
 @Composable
 fun HustlePlayer(
@@ -141,7 +141,7 @@ fun HustlePlayer(
                             .then(if (isExpanded) Modifier.padding(paddingValues) else Modifier)
                             .padding(if (isExpanded) PaddingDefault else 0.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
+                        verticalArrangement = Arrangement.SpaceBetween,
                     ) {
                         val song = playState.currentSong
                         if (expanded && song != null) {
