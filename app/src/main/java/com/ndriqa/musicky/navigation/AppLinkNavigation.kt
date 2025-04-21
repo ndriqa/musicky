@@ -6,16 +6,25 @@ import android.content.Intent
 import androidx.core.net.toUri
 import com.ndriqa.musicky.R
 
+fun musickyPlayStore(context: Context) {
+    val appUri = "market://details?id=com.ndriqa.musicky".toUri()
+    Intent(Intent.ACTION_VIEW, appUri)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        .also { context.startActivity(it) }
+}
+
+
 fun ndriqaOtherApps(context: Context) {
     val developerId = context.getString(R.string.ndriqa_developer_id)
-    val playStoreUri = "https://play.google.com/store/apps/dev?id=$developerId"
-    Intent(Intent.ACTION_VIEW, playStoreUri.toUri())
-        .apply { `package` = "com.android.vending" }
+    val playStoreUrl = "https://play.google.com/store/apps/dev?id=$developerId"
+    val playStoreUri = playStoreUrl.toUri()
+    Intent(Intent.ACTION_VIEW, playStoreUri)
+        .setPackage("com.android.vending")
         .also {
             try {
                 context.startActivity(it)
             } catch (e: ActivityNotFoundException) {
-                context.startActivity(Intent(Intent.ACTION_VIEW, playStoreUri.toUri()))
+                context.startActivity(Intent(Intent.ACTION_VIEW, playStoreUri))
             }
         }
 }

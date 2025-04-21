@@ -47,6 +47,12 @@
     <string name="visualizer_data_rate_warning">May slightly reduce battery life.</string>
     <string name="normal">Normal</string>
     <string name="high">High</string>
+    <string name="ndriqa_message">Hi, I\'m ndriqa, the developer of Musicky.</string>
+    <string name="ndriqa_call_for_help">If you like this app and want to help me out, you can do so in at least one of the methods below</string>
+    <string name="ndriqa_title">Message from developer</string>
+    <string name="rate_musicky_on_play_store">Rate Musicky on Play Store</string>
+    <string name="donate_on_ko_fi">Donate on Ko-Fi</string>
+    <string name="check_out_my_other_apps">Check out my other apps</string>
 
     <plurals name="num_songs">
         <item quantity="one">%d song</item>

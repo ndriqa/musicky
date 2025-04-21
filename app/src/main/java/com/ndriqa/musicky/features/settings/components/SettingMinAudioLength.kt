@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -22,7 +21,7 @@ internal fun ColumnScope.SettingMinAudioLength(
         modifier = modifier,
         content = {
             SettingsItemTitle(title = stringResource(R.string.minimum_song_length))
-            Text(stringResource(R.string.num_seconds, minAudioLength))
+            SettingsItemText(stringResource(R.string.num_seconds, minAudioLength))
             Slider(
                 value = minAudioLengthRatio,
                 onValueChange = onAudioRatioChange,

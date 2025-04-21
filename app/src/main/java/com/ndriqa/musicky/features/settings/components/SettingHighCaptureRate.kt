@@ -15,7 +15,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.ui.theme.PaddingCompact
@@ -35,8 +34,8 @@ fun SettingHighCaptureRate(
         modifier = modifier,
         content = {
             SettingsItemTitle(stringResource(R.string.visualizer_data_rate))
-            Text(stringResource(R.string.visualizer_data_rate_description), textAlign = TextAlign.Center)
-            Text(stringResource(R.string.visualizer_data_rate_warning), textAlign = TextAlign.Center)
+            SettingsItemText(stringResource(R.string.visualizer_data_rate_description))
+            SettingsItemText(stringResource(R.string.visualizer_data_rate_warning))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

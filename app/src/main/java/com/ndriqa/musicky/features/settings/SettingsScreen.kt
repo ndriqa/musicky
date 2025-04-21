@@ -1,7 +1,6 @@
 package com.ndriqa.musicky.features.settings
 
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.scrollable
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,16 +23,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.ndriqa.musicky.R
+import com.ndriqa.musicky.core.preferences.DataStoreManager
 import com.ndriqa.musicky.core.preferences.DataStoreManager.Companion.MAX_AUDIO_LENGTH
 import com.ndriqa.musicky.core.preferences.DataStoreManager.Companion.MIN_AUDIO_LENGTH
 import com.ndriqa.musicky.features.player.PlayerViewModel
 import com.ndriqa.musicky.features.settings.components.SettingHighCaptureRate
 import com.ndriqa.musicky.features.settings.components.SettingMinAudioLength
+import com.ndriqa.musicky.features.settings.components.SettingNdriqa
 import com.ndriqa.musicky.features.settings.components.SettingPreferredVisualizer
 import com.ndriqa.musicky.features.settings.components.SettingsItemTitle
+import com.ndriqa.musicky.navigation.musickyPlayStore
+import com.ndriqa.musicky.navigation.ndriqaDonate
+import com.ndriqa.musicky.navigation.ndriqaOtherApps
+import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 
 @Composable
@@ -42,6 +50,7 @@ fun SettingsScreen(
     settingsViewModel: SettingsViewModel,
     playerViewModel: PlayerViewModel
 ) {
+    val activity = LocalActivity.current
     val context = LocalContext.current
     val minAudioLength by settingsViewModel.minAudioLength.collectAsState()
     val preferredVisualizer by settingsViewModel.preferredVisualizer.collectAsState()
@@ -57,6 +66,20 @@ fun SettingsScreen(
             .toInt()
             .coerceIn(MIN_AUDIO_LENGTH, MAX_AUDIO_LENGTH)
             .also { settingsViewModel.updateMinAudioLength(it) }
+    }
+
+    fun onPlayStoreRating() {
+        activity
+            ?.let { settingsViewModel.launchInAppReview(it) }
+            ?: musickyPlayStore(context)
+    }
+
+    fun onOtherApps() {
+        ndriqaOtherApps(context)
+    }
+
+    fun onDonate() {
+        ndriqaDonate(context)
     }
 
     LaunchedEffect(highCaptureRate) {
@@ -90,7 +113,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .scrollable(scrollState, Orientation.Vertical),
+                .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(PaddingDefault)
         ) {
@@ -109,6 +132,33 @@ fun SettingsScreen(
                 highCaptureRate = highCaptureRate,
                 onHighCaptureRateToggle = settingsViewModel::toggleHighCaptureRate
             )
+
+            SettingNdriqa(
+                onPlayStoreRate = ::onPlayStoreRating,
+                onDonate = ::onDonate,
+                onNdriqaApps = ::onOtherApps,
+            )
         }
+    }
+}
+
+@Preview(
+    showBackground = true,
+    backgroundColor = 0xFFE6F6F5
+)
+@Composable
+private fun SettingsScreenPreview() {
+    val context = LocalContext.current
+    val navController = rememberNavController()
+    val dataStoreManager = DataStoreManager(context)
+    val playerViewModel = PlayerViewModel(context, dataStoreManager)
+    val settingsViewModel = SettingsViewModel(dataStoreManager)
+
+    MusickyTheme {
+        SettingsScreen(
+            navController = navController,
+            settingsViewModel = settingsViewModel,
+            playerViewModel = playerViewModel
+        )
     }
 }
