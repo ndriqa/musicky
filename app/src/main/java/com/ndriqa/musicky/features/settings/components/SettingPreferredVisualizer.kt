@@ -30,7 +30,7 @@ internal fun ColumnScope.SettingPreferredVisualizer(
     modifier: Modifier = Modifier
 ) {
     SettingsItemSection(
-        modifier = Modifier,
+        modifier = modifier,
         content = {
             SettingsItemTitle(stringResource(R.string.preferred_visualizer))
             Box {

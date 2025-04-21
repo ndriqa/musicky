@@ -42,6 +42,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     private var autoStopTimeLeft: Long? = null
     private var currentIndex = -1
     private var shuffleEnabled = false
+    private var highCaptureRateEnabled = false
     private var repeatMode: RepeatMode = RepeatMode.All
 
     private val originalQueue = mutableListOf<Song>()
@@ -114,9 +115,15 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
             ACTION_TOGGLE_SHUFFLE -> toggleShuffle()
             ACTION_TOGGLE_REPEAT -> toggleRepeat()
             ACTION_TOGGLE_TIMER -> toggleTimer(actualIntent)
+            ACTION_HIGH_RATE_UPDATE -> toggleHighRate(actualIntent)
         }
 
         return START_STICKY
+    }
+
+    private fun toggleHighRate(intent: Intent) {
+        highCaptureRateEnabled = intent.getBooleanExtra(EXTRA_HIGH_CAPTURE_RATE, false)
+        mediaPlayer?.audioSessionId?.let { sessionId -> setupVisualizer(sessionId) }
     }
 
     private fun toggleTimer(intent: Intent) {
@@ -148,6 +155,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     }
 
     private fun startPlayback(intent: Intent) {
+        highCaptureRateEnabled = intent.getBooleanExtra(EXTRA_HIGH_CAPTURE_RATE, false)
         val newQueue = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableArrayListExtra(EXTRA_QUEUE, Song::class.java)
         } else {
@@ -465,6 +473,8 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     private fun setupVisualizer(audioSessionId: Int) {
         audioVisualizer?.release() // always release before setting a new one
         audioVisualizer = Visualizer(audioSessionId).apply {
+            val captureRate = Visualizer.getMaxCaptureRate() / if (highCaptureRateEnabled) 1 else 2
+
             captureSize = Visualizer.getCaptureSizeRange()[1]
             setDataCaptureListener(
                 /* listener = */ object : Visualizer.OnDataCaptureListener {
@@ -496,7 +506,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
                             .also { intent -> sendBroadcast(intent) }
                     }
                 },
-                /* rate = */ Visualizer.getMaxCaptureRate() / 2,
+                /* rate = */ captureRate,
                 /* waveform = */ true,
                 /* fft = */ true
             )
@@ -526,12 +536,14 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
 
         const val ACTION_BROADCAST_UPDATE = "com.ndriqa.action.UPDATE"
         const val ACTION_VISUALIZER_UPDATE = "com.ndriqa.action.VISUALIZER_UPDATE"
+        const val ACTION_HIGH_RATE_UPDATE = "com.ndriqa.action.HIGH_RATE_UPDATE"
 
         const val EXTRA_SONG_PATH = "EXTRA_SONG_PATH"
         const val EXTRA_PLAYING_STATE = "EXTRA_PLAYING_STATE"
         const val EXTRA_QUEUE = "EXTRA_QUEUE"
         const val EXTRA_SEEK_POSITION = "EXTRA_SEEK_POSITION"
         const val EXTRA_TIMER_MILLIS = "EXTRA_TIMER_MILLIS"
+        const val EXTRA_HIGH_CAPTURE_RATE = "EXTRA_HIGH_CAPTURE_RATE"
 
         const val VISUALIZER_WAVEFORM = "VISUALIZER_WAVEFORM"
         const val VISUALIZER_AUDIO_FEATURES = "VISUALIZER_AUDIO_FEATURES"

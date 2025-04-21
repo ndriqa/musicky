@@ -3,6 +3,7 @@ package com.ndriqa.musicky.features.player
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -64,8 +65,6 @@ fun HustlePlayer(
     val fftFeatures by playerViewModel.fftFeatures.collectAsState()
     val preferredVisualizer by settingsViewModel.preferredVisualizer.collectAsState()
 
-    val currentSong by remember { derivedStateOf { playState.currentSong } }
-
     val gestureModifier = Modifier.pointerInput(Unit) {
         detectVerticalDragGestures { change, dragAmount ->
             onExpandedUpdate(when {
@@ -93,10 +92,6 @@ fun HustlePlayer(
         playerViewModel.toggleTimer(context, millis)
     }
 
-    LaunchedEffect(currentSong) {
-        playerViewModel.resetSongAverageEnergy()
-    }
-
     AnimatedVisibility(isVisible) {
         AnimatedContent(targetState = isExpanded) { expanded ->
             val sizeModifier =
@@ -113,7 +108,12 @@ fun HustlePlayer(
                 onClick = { onExpandedUpdate(!isExpanded) },
                 modifier = modifier
                     .then(sizeModifier)
-                    .then(gestureModifier),
+                    .then(gestureModifier)
+                    .border(
+                        width = 1.dp,
+                        shape = playerShape,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
                 shape = playerShape,
                 containerColor = MaterialTheme.colorScheme.primary,
                 elevation = elevation(
@@ -180,10 +180,10 @@ fun HustlePlayer(
 @Composable
 private fun HustlePlayerCompactPreview() {
     val context = LocalContext.current
-    val playerViewModel = PlayerViewModel(context).apply {
+    val dataStoreManager = DataStoreManager(context)
+    val playerViewModel = PlayerViewModel(context, dataStoreManager).apply {
         updatePlayingStateTesting(MockHelper.getMockPlayingState())
     }
-    val dataStoreManager = DataStoreManager(context)
     val settingsViewModel = SettingsViewModel(dataStoreManager)
     val navController = rememberNavController()
 
@@ -204,10 +204,10 @@ private fun HustlePlayerCompactPreview() {
 @Composable
 private fun HustlePlayerExpandedPreview() {
     val context = LocalContext.current
-    val playerViewModel = PlayerViewModel(context).apply {
+    val dataStoreManager = DataStoreManager(context)
+    val playerViewModel = PlayerViewModel(context, dataStoreManager).apply {
         updatePlayingStateTesting(MockHelper.getMockPlayingState())
     }
-    val dataStoreManager = DataStoreManager(context)
     val settingsViewModel = SettingsViewModel(dataStoreManager)
     val navController = rememberNavController()
 

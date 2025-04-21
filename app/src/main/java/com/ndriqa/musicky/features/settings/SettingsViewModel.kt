@@ -1,10 +1,13 @@
 package com.ndriqa.musicky.features.settings
 
+import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ndriqa.musicky.BuildConfig
 import com.ndriqa.musicky.core.data.VisualizerType
 import com.ndriqa.musicky.core.preferences.DataStoreManager
+import com.ndriqa.musicky.core.services.PlayerService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -21,7 +24,23 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, DataStoreManager.DEFAULT_MIN_AUDIO_LENGTH)
 
     val preferredVisualizer = dataStoreManager.defaultVisualizer
-        .stateIn(viewModelScope, SharingStarted.Eagerly, VisualizerType.LineCenter)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, VisualizerType.Circular)
+
+    val highCaptureRate = dataStoreManager.highCaptureRate
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun updateServiceHighCaptureRate(context: Context) {
+        Intent(context, PlayerService::class.java)
+            .setAction(PlayerService.ACTION_HIGH_RATE_UPDATE)
+            .putExtra(PlayerService.EXTRA_HIGH_CAPTURE_RATE, highCaptureRate.value)
+            .also { context.startService(it) }
+    }
+
+    fun toggleHighCaptureRate() {
+        viewModelScope.launch {
+            dataStoreManager.toggleHighCaptureRate()
+        }
+    }
 
     fun updateMinAudioLength(value: Int) {
         viewModelScope.launch {

@@ -17,28 +17,22 @@ private val Context.dataStore by preferencesDataStore(name = "user_preferences")
 @Singleton
 class DataStoreManager @Inject constructor(private val context: Context) {
 
-    private val KeyExamplePref = stringPreferencesKey(STRING_KEY_EXAMPLE_PREF)
-    private val KeyPreferredDifficulty = stringPreferencesKey(STRING_KEY_EXAMPLE_PREF)
     private val KeyDefaultVisualizer = stringPreferencesKey(STRING_KEY_DEFAULT_VISUALIZER)
-    private val KeyEnableVibration = booleanPreferencesKey(BOOLEAN_KEY_VIBRATION)
-    private val KeyEnableSound = booleanPreferencesKey(BOOLEAN_KEY_SOUND)
+    private val KeyHighCaptureRate = booleanPreferencesKey(BOOLEAN_KEY_HIGH_CAPTURE_RATE)
     private val KeyMinAudioLength = intPreferencesKey(INT_KEY_MIN_AUDIO_LENGTH)
 
-    val enableVibration: Flow<Boolean> = context.dataStore.data
-        .map { it[KeyEnableVibration] ?: true }
-
-    val enableSound: Flow<Boolean> = context.dataStore.data
-        .map { it[KeyEnableSound] ?: true }
+    val highCaptureRate: Flow<Boolean> = context.dataStore.data
+        .map { it[KeyHighCaptureRate] ?: false }
 
     val minAudioLength: Flow<Int> = context.dataStore.data
         .map { prefs -> prefs[KeyMinAudioLength] ?: DEFAULT_MIN_AUDIO_LENGTH }
 
     val defaultVisualizer: Flow<VisualizerType> = context.dataStore.data
         .map { prefs ->
-            val type = prefs[KeyDefaultVisualizer] ?: VisualizerType.LineCenter.title
+            val type = prefs[KeyDefaultVisualizer] ?: VisualizerType.Circular.title
             VisualizerType.entries
                 .find { it.title == type }
-                ?: VisualizerType.LineCenter
+                ?: VisualizerType.Circular
         }
 
     suspend fun setMinAudioLength(value: Int) {
@@ -47,21 +41,9 @@ class DataStoreManager @Inject constructor(private val context: Context) {
         }
     }
 
-    suspend fun toggleVibration() {
+    suspend fun toggleHighCaptureRate() {
         context.dataStore.edit { preferences ->
-            preferences[KeyEnableVibration] = !(preferences[KeyEnableVibration] ?: true)
-        }
-    }
-
-    suspend fun toggleSound() {
-        context.dataStore.edit { preferences ->
-            preferences[KeyEnableSound] = !(preferences[KeyEnableSound] ?: true)
-        }
-    }
-
-    suspend fun changePrefSuspend(newData: String) {
-        context.dataStore.edit { preferences ->
-            preferences[KeyExamplePref] = newData
+            preferences[KeyHighCaptureRate] = !(preferences[KeyHighCaptureRate] ?: false)
         }
     }
 
@@ -75,6 +57,7 @@ class DataStoreManager @Inject constructor(private val context: Context) {
         private const val STRING_KEY_EXAMPLE_PREF = "STRING_KEY_EXAMPLE_PREF"
         private const val BOOLEAN_KEY_VIBRATION = "BOOLEAN_KEY_VIBRATION"
         private const val BOOLEAN_KEY_SOUND = "BOOLEAN_KEY_SOUND"
+        private const val BOOLEAN_KEY_HIGH_CAPTURE_RATE = "BOOLEAN_KEY_HIGH_CAPTURE_RATE"
         private const val INT_KEY_MIN_AUDIO_LENGTH = "KEY_MIN_AUDIO_LENGTH"
         private const val STRING_KEY_DEFAULT_VISUALIZER = "STRING_KEY_DEFAULT_VISUALIZER"
 

@@ -13,6 +13,7 @@ import com.ndriqa.musicky.core.data.AudioFeatures
 import com.ndriqa.musicky.core.data.FftFeatures
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.Song
+import com.ndriqa.musicky.core.preferences.DataStoreManager
 import com.ndriqa.musicky.core.services.PlayerService
 import com.ndriqa.musicky.core.services.PlayerService.Companion.VISUALIZER_AUDIO_FEATURES
 import com.ndriqa.musicky.core.services.PlayerService.Companion.VISUALIZER_FFT_FEATURES
@@ -20,22 +21,18 @@ import com.ndriqa.musicky.core.services.PlayerService.Companion.VISUALIZER_WAVEF
 import com.ndriqa.musicky.core.util.extensions.getSafeParcelableExtra
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.math.abs
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
-    @ApplicationContext context: Context
+    @ApplicationContext context: Context,
+    private val dataStoreManager: DataStoreManager
 ): ViewModel() {
     private val playerUpdateReceiver = object : BroadcastReceiver() {
 
@@ -70,15 +67,6 @@ class PlayerViewModel @Inject constructor(
     private val _playingState = MutableStateFlow(PlayingState())
     val playingState: StateFlow<PlayingState> = _playingState.asStateFlow()
 
-    private val _songEnergyRecordings = MutableStateFlow(byteArrayOf())
-    val songEnergyRecordings = _songEnergyRecordings.asStateFlow()
-    val averageSongEnergy = _songEnergyRecordings
-        .map { it.map { abs(it.toInt()) }.average().toInt().toByte() }
-        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
-
-    private val _pulse = MutableSharedFlow<Boolean>()
-    val pulse = _pulse.asSharedFlow()
-
     private val _waveform = MutableStateFlow(byteArrayOf())
     val waveform = _waveform.asStateFlow()
 
@@ -91,21 +79,16 @@ class PlayerViewModel @Inject constructor(
     private val _queue = MutableStateFlow<List<Song>>(emptyList())
     val queue: StateFlow<List<Song>> = _queue.asStateFlow()
 
+    val highCaptureRate = dataStoreManager.highCaptureRate
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     @VisibleForTesting
     internal fun updatePlayingStateTesting(playingState: PlayingState) {
         _playingState.value = playingState
     }
 
     private fun updateWaveform(waveform: ByteArray) {
-        viewModelScope.launch {
-            val resampledWaveform = waveform //.resampleTo(WAVEFORM_BARS)
-            val energyRecordings = _songEnergyRecordings.value
-            val currentEnergy = resampledWaveform.map { abs(it.toInt()) }.average().toInt().toByte()
-
-            _pulse.emit(currentEnergy - PULSE_THRESHOLD > averageSongEnergy.value)
-            _songEnergyRecordings.value = energyRecordings + currentEnergy
-            _waveform.value = resampledWaveform
-        }
+        _waveform.update { waveform }
     }
 
     private fun updateFftFeatures(newFftFeatures: FftFeatures) {
@@ -114,10 +97,6 @@ class PlayerViewModel @Inject constructor(
 
     private fun updateAudioFeatures(newAudioFeatures: AudioFeatures) {
         _audioFeatures.value = newAudioFeatures
-    }
-
-    fun resetSongAverageEnergy() {
-        _songEnergyRecordings.value = byteArrayOf()
     }
 
     fun registerPlayerUpdates(context: Context) {
@@ -155,38 +134,37 @@ class PlayerViewModel @Inject constructor(
 
     fun pause(context: Context) {
         Intent(context, PlayerService::class.java)
-            .apply { action = PlayerService.ACTION_PAUSE }
+            .setAction(PlayerService.ACTION_PAUSE)
             .also { context.startService(it) }
     }
 
     fun resume(context: Context) {
         Intent(context, PlayerService::class.java)
-            .apply { action = PlayerService.ACTION_RESUME }
+            .setAction(PlayerService.ACTION_RESUME)
             .also { context.startService(it) }
     }
 
     fun next(context: Context) {
         Intent(context, PlayerService::class.java)
-            .apply { action = PlayerService.ACTION_NEXT }
+            .setAction(PlayerService.ACTION_NEXT)
             .also { context.startService(it) }
     }
 
     fun previous(context: Context) {
         Intent(context, PlayerService::class.java)
-            .apply { action = PlayerService.ACTION_PREVIOUS }
+            .setAction(PlayerService.ACTION_PREVIOUS)
             .also { context.startService(it) }
     }
 
     fun play(context: Context, song: Song? = null) {
         val selectedSong = song ?: _queue.value.firstOrNull() ?: return
 
-        val intent = Intent(context, PlayerService::class.java).apply {
-            action = PlayerService.ACTION_PLAY
-            putExtra(PlayerService.EXTRA_SONG_PATH, selectedSong.data)
-            putParcelableArrayListExtra(PlayerService.EXTRA_QUEUE, ArrayList(_queue.value))
-        }
-
-        ContextCompat.startForegroundService(context, intent)
+        Intent(context, PlayerService::class.java)
+            .setAction(PlayerService.ACTION_PLAY)
+            .putExtra(PlayerService.EXTRA_SONG_PATH, selectedSong.data)
+            .putExtra(PlayerService.EXTRA_HIGH_CAPTURE_RATE, highCaptureRate.value)
+            .putParcelableArrayListExtra(PlayerService.EXTRA_QUEUE, ArrayList(_queue.value))
+            .also { ContextCompat.startForegroundService(context, it) }
     }
 
     fun seekToProgress(context: Context, progress: Float) {

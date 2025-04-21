@@ -42,6 +42,11 @@
     <string name="cancel">Cancel</string>
     <string name="disable_timer">Disable Timer</string>
     <string name="set">Set</string>
+    <string name="visualizer_data_rate">Visualizer Data Rate</string>
+    <string name="visualizer_data_rate_description">Enables smoother visualizer by capturing audio data more frequently.</string>
+    <string name="visualizer_data_rate_warning">May slightly reduce battery life.</string>
+    <string name="normal">Normal</string>
+    <string name="high">High</string>
 
     <plurals name="num_songs">
         <item quantity="one">%d song</item>
