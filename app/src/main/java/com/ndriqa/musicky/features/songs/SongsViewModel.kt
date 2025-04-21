@@ -14,7 +14,6 @@ import com.ndriqa.musicky.core.data.Album
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.preferences.DataStoreManager
 import com.ndriqa.musicky.core.util.extensions.contains
-import com.ndriqa.musicky.core.util.extensions.simpleLog
 import com.ndriqa.musicky.data.repositories.SongsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -65,12 +64,11 @@ class SongsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             getCachedSongs().let { cachedSongs ->
                 _songs.value = cachedSongs
-                simpleLog("Cached songs found: ${cachedSongs.size}")
             }
+
             getAllSongs(context).let { foundSongs ->
                 _songs.value = foundSongs
                 songsRepository.syncSongs(foundSongs)
-                simpleLog("Songs found: ${foundSongs.size}")
             }
         }
     }

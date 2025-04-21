@@ -3,6 +3,10 @@ package com.ndriqa.musicky.features.player
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -19,9 +23,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -44,7 +49,9 @@ import com.ndriqa.musicky.ui.theme.DiscSize
 import com.ndriqa.musicky.ui.theme.DiscSizeOffsetMax
 import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingDefault
-import kotlin.math.abs
+import kotlinx.coroutines.delay
+
+private const val TRANSITION_TIME = 250
 
 @Composable
 fun HustlePlayer(
@@ -65,16 +72,6 @@ fun HustlePlayer(
     val fftFeatures by playerViewModel.fftFeatures.collectAsState()
     val preferredVisualizer by settingsViewModel.preferredVisualizer.collectAsState()
 
-    val gestureModifier = Modifier.pointerInput(Unit) {
-        detectVerticalDragGestures { change, dragAmount ->
-            onExpandedUpdate(when {
-                dragAmount > 20f -> false
-                dragAmount < -20f -> true
-                else -> isExpanded
-            })
-        }
-    }
-
     val startOffsetPadding = PaddingDefault * 2
     val topOffsetPadding = PaddingDefault * 3
     val fabElevation = 0.dp
@@ -82,6 +79,19 @@ fun HustlePlayer(
     val discSizeOffset = DiscSizeOffsetMax * (audioFeatures.normalizedDisturbance - 0.5).toFloat()
     val discSize = DiscSize + discSizeOffset
     val animatedDiscSize by animateDpAsState(targetValue = discSize)
+    var isExpansionAnimating by remember { mutableStateOf(false) }
+
+    val gestureModifier = Modifier.pointerInput(Unit) {
+        detectVerticalDragGestures { change, dragAmount ->
+            if (isExpansionAnimating) return@detectVerticalDragGestures
+
+            onExpandedUpdate(when {
+                dragAmount > 40f -> false
+                dragAmount < -40f -> true
+                else -> isExpanded
+            })
+        }
+    }
 
     fun onSettingsClick() {
         onExpandedUpdate(false)
@@ -92,8 +102,19 @@ fun HustlePlayer(
         playerViewModel.toggleTimer(context, millis)
     }
 
+    LaunchedEffect(isExpanded) {
+        isExpansionAnimating = true
+        delay(TRANSITION_TIME.toLong() * 2)
+        isExpansionAnimating = false
+    }
+
     AnimatedVisibility(isVisible) {
-        AnimatedContent(targetState = isExpanded) { expanded ->
+        AnimatedContent(
+            targetState = isExpanded,
+            transitionSpec = {
+                fadeIn(tween(TRANSITION_TIME)) togetherWith fadeOut(tween(TRANSITION_TIME))
+            },
+        ) { expanded ->
             val sizeModifier =
                 if (!expanded) Modifier
                     .size(animatedDiscSize)
