@@ -160,6 +160,7 @@ fun AppNavigation(
                 ) {
                     composable<Screens.Songs> {
                         SongsScreen(
+                            navController = navController,
                             songsViewModel = songsViewModel,
                             playerViewModel = playerViewModel
                         )

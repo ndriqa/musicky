@@ -121,7 +121,7 @@ internal fun SongItem(
             horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(space = PaddingNano, alignment = Alignment.CenterVertically)
         ) {
-            SongTitle(text = song.title,)
+            SongTitle(text = song.title, isPlaying = isPlaying)
             SongDescription(artist = song.artist, timer = song.duration.toFormattedTime())
         }
 

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.ui.theme.QuicksandFontFamily
+import com.ndriqa.musicky.ui.theme.TopBarButtonsSize
 
 @Composable
 internal fun RowScope.SearchField(
@@ -56,7 +57,7 @@ internal fun RowScope.SearchField(
         decorationBox = { innerTextField ->
             Box(
                 modifier = Modifier
-                    .height(44.dp)
+                    .height(TopBarButtonsSize)
                     .background(Color.Transparent, RoundedCornerShape(0.dp))
                     .padding(horizontal = 0.dp),
                 contentAlignment = Alignment.CenterStart

@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -39,7 +38,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.ndriqa.musicky.core.data.Album
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.features.player.PlayerViewModel
@@ -47,12 +46,16 @@ import com.ndriqa.musicky.features.songs.components.AlbumItem
 import com.ndriqa.musicky.features.songs.components.NoInfoUi
 import com.ndriqa.musicky.features.songs.components.SearchButton
 import com.ndriqa.musicky.features.songs.components.SearchField
+import com.ndriqa.musicky.features.songs.components.SettingsButton
 import com.ndriqa.musicky.features.songs.components.SongItem
 import com.ndriqa.musicky.features.songs.components.TabsLayout
+import com.ndriqa.musicky.navigation.Screens
 import com.ndriqa.musicky.ui.theme.PaddingCompact
+import com.ndriqa.musicky.ui.theme.TopBarButtonsSize
 
 @Composable
 fun SongsScreen(
+    navController: NavController,
     modifier: Modifier = Modifier,
     songsViewModel: SongsViewModel,
     playerViewModel: PlayerViewModel
@@ -115,6 +118,17 @@ fun SongsScreen(
         } else clearSearchFocus()
     }
 
+    fun onAlbumPlay(album: Album) {
+        playerViewModel.apply {
+            setQueue(album.songs)
+            play(context)
+        }
+    }
+
+    fun onSettingsClick() {
+        navController.navigate(Screens.Settings) { launchSingleTop = true }
+    }
+
     LaunchedEffect(requestedSongToBeDeleted) {
         requestedSongToBeDeleted?.let { uri ->
             val pendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -126,13 +140,6 @@ fun SongsScreen(
     }
 
     Column {
-        fun onAlbumPlay(album: Album) {
-            playerViewModel.apply {
-                setQueue(album.songs)
-                play(context)
-            }
-        }
-
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -152,7 +159,7 @@ fun SongsScreen(
             Row(
                 modifier = Modifier
                     .then(if (isSearchVisible) Modifier.weight(1f) else Modifier)
-                    .height(44.dp),
+                    .height(TopBarButtonsSize),
             ) {
                 if (isSearchVisible) Spacer(modifier = Modifier.width(PaddingCompact))
 
@@ -169,6 +176,10 @@ fun SongsScreen(
                 SearchButton(
                     onSearchToggle = ::toggleSearch,
                     enabled = selectedTabIndex == MusicTab.Songs.ordinal
+                )
+
+                SettingsButton(
+                    onSettingsClicked = ::onSettingsClick
                 )
             }
         }

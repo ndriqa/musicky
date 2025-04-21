@@ -7,11 +7,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 
 @Composable
-internal fun SongTitle(text: String, modifier: Modifier = Modifier) {
+internal fun SongTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    isPlaying: Boolean = false
+) {
     Text(
         modifier = modifier,
         text = text,
-        fontWeight = FontWeight.Bold,
+        fontWeight = if (isPlaying) FontWeight.ExtraBold else FontWeight.Bold,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis
     )

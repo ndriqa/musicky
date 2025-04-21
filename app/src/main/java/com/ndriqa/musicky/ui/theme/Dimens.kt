@@ -32,3 +32,5 @@ val MusicIconArtworkSizeBig = 120.dp
 val DefaultPlayerElevation = 2.dp
 val DiscSize = 60.dp
 val DiscSizeOffsetMax = 5.dp
+
+val TopBarButtonsSize = 44.dp
