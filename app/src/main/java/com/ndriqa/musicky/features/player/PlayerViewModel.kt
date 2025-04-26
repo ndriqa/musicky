@@ -38,14 +38,8 @@ class PlayerViewModel @Inject constructor(
 
         override fun onReceive(context: Context?, intent: Intent?) {
             intent ?: return
-            val playingState = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableExtra(PlayerService.EXTRA_PLAYING_STATE, PlayingState::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra<PlayingState>(PlayerService.EXTRA_PLAYING_STATE)
-            }
-
-            playingState?.let { newState -> _playingState.update { newState } }
+            val playingState = intent.getSafeParcelableExtra<PlayingState>(PlayerService.EXTRA_PLAYING_STATE)
+            playingState?.let { newState -> _playingState.value = newState }
         }
     }
 

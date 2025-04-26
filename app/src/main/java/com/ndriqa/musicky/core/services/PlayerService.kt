@@ -17,6 +17,7 @@ import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.RepeatMode
 import com.ndriqa.musicky.core.data.Song
+import com.ndriqa.musicky.core.util.extensions.debugLog
 import com.ndriqa.musicky.core.util.extensions.loadAsBitmap
 import com.ndriqa.musicky.core.util.helpers.AudioAnalyzer
 import com.ndriqa.musicky.core.util.helpers.FftAnalyzer
@@ -37,7 +38,8 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     private val audioAnalyzer = AudioAnalyzer()
 
     private var progressJob: Job? = null
-    private var timerJob: Job? = null
+    private var autoPauseTimerJob: Job? = null
+    private var autoKillProcessJob: Job? = null
 
     private var autoStopTimeLeft: Long? = null
     private var currentIndex = -1
@@ -156,15 +158,10 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
 
     private fun startPlayback(intent: Intent) {
         highCaptureRateEnabled = intent.getBooleanExtra(EXTRA_HIGH_CAPTURE_RATE, false)
-        val newQueue = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableArrayListExtra(EXTRA_QUEUE, Song::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            intent.getParcelableArrayListExtra<Song>(EXTRA_QUEUE)
-        }
-        val songPath = intent.getStringExtra(EXTRA_SONG_PATH)
+        val newQueue = intent.extractQueue()
+        val songPath = intent.getStringExtra(EXTRA_SONG_PATH) ?: newQueue.firstOrNull()?.data
 
-        if (!newQueue.isNullOrEmpty()) {
+        if (newQueue.isNotEmpty()) {
             originalQueue.clear()
             originalQueue.addAll(newQueue)
 
@@ -199,9 +196,11 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         mediaPlayer?.pause()
         refreshNotificationAndBroadcast()
         stopProgressUpdates()
+        startSelfSabotage()
     }
 
     private fun resume() {
+        stopSelfSabotage()
         mediaPlayer?.start()
         refreshNotificationAndBroadcast()
         startProgressUpdates()
@@ -213,8 +212,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     }
 
     private fun playCurrent(goingForward: Boolean = true) {
-        val state = playState ?: return
-        val song = state.currentSong ?: return
+        val song = playState?.currentSong ?: return
 
         try {
             mediaPlayer?.release()
@@ -225,11 +223,11 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
                 prepareAsync()
             }
 
-            startForeground(NOTIFICATION_ID, buildSongNotification(state))
+            buildSongNotification()?.let { startForeground(NOTIFICATION_ID, it) }
             refreshNotificationAndBroadcast()
         } catch (e: Exception) {
-            Timber.tag("PlayerService").e(e, "Song file missing or can't be played: ${song.data}")
-            Timber.tag("PlayerService").d("Trying the next song now!")
+            debugLog("song file missing or can't be played: ${song.data}", e)
+            debugLog("trying the next song now!")
 
             if (activeQueue.isNotEmpty()) {
                 currentIndex = if (goingForward) {
@@ -310,16 +308,25 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun sendStateBroadcast() {
-        val song = activeQueue.getOrNull(currentIndex) ?: return
-
         Intent(ACTION_BROADCAST_UPDATE).apply {
             setPackage(packageName)
             putExtra(EXTRA_PLAYING_STATE, playState)
-            putExtra(EXTRA_SONG_PATH, song.data)
         }.also { intent -> sendBroadcast(intent) }
     }
 
-    private fun buildSongNotification(state: PlayingState): Notification {
+    private fun sendStateStoppedBroadcast() {
+        Intent(ACTION_BROADCAST_UPDATE)
+            .apply { setPackage(packageName) }
+            .also { intent -> sendBroadcast(intent) }
+    }
+
+    private fun removeSongNotification() {
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(NOTIFICATION_ID)
+    }
+
+    private fun buildSongNotification(): Notification? {
+        val state = playState ?: return null
         val song = state.currentSong
         val isPlaying = state.isPlaying
         val channel = NotificationChannelInfo.Playing
@@ -348,12 +355,13 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         val cancelAction = Intent(this, PlayerService::class.java)
             .apply { action = ACTION_STOP }
             .let { intent -> PendingIntent.getService(this, 4, intent, PendingIntent.FLAG_IMMUTABLE) }
+            .let { pendingIntent -> NotificationCompat.Action(R.drawable.ic_musicky_logo, "", pendingIntent) }
 
         val mediaStyle = MediaNotificationCompat.MediaStyle()
-            .setShowActionsInCompactView(0, 1, 2, 4)
-            .setShowCancelButton(true)
-            .setCancelButtonIntent(cancelAction)
+//            .setShowCancelButton(true)
+//            .setCancelButtonIntent(cancelAction)
             .setMediaSession(mediaSession.sessionToken)
+            .setShowActionsInCompactView(1, 2, 3)
 
         return NotificationCompat.Builder(this, channel.id)
             .setContentTitle(song?.title ?: getString(R.string.no_song_playing))
@@ -363,6 +371,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
             .addAction(prevAction)
             .addAction(playPauseAction)
             .addAction(nextAction)
+            .addAction(cancelAction)
             .setStyle(mediaStyle)
             .setOnlyAlertOnce(true)
             .setOngoing(isPlaying)
@@ -370,10 +379,32 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
             .build()
     }
 
+    fun startSelfSabotage() {
+        debugLog("started service self sabotage")
+        stopForeground(STOP_FOREGROUND_DETACH)
+        autoKillProcessJob?.cancel()
+        autoKillProcessJob = CoroutineScope(Dispatchers.Default).launch {
+            delay(AUTO_STOP_TIMEOUT)
+            if (playState?.isPlaying != true) {
+                sendStateStoppedBroadcast()
+                removeSongNotification()
+                stopSelf()
+                debugLog("service self unalived")
+            }
+        }
+    }
+
+    fun stopSelfSabotage() {
+        autoKillProcessJob?.cancel()
+        autoKillProcessJob = null
+        buildSongNotification()?.let { startForeground(NOTIFICATION_ID, it) }
+        debugLog("canceled self sabotage")
+    }
+
     private fun startSleepTimer(duration: Long) {
         autoStopTimeLeft = null
-        timerJob?.cancel()
-        timerJob = CoroutineScope(Dispatchers.Default).launch {
+        autoPauseTimerJob?.cancel()
+        autoPauseTimerJob = CoroutineScope(Dispatchers.Default).launch {
             var timeLeft = duration
             autoStopTimeLeft = timeLeft
 
@@ -381,14 +412,14 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
                 delay(REFRESH_FREQUENCY)
                 timeLeft -= REFRESH_FREQUENCY
                 autoStopTimeLeft = timeLeft
-                Timber.d("Sleep timer ticking: $timeLeft ms left")
+                debugLog("sleep timer ticking: $timeLeft ms left")
                 refreshNotificationAndBroadcast()
             }
 
             if (isActive) {
-                pause()
                 autoStopTimeLeft = null
-                Timber.d("Sleep timer done. Stopped playback.")
+                pause()
+                debugLog("sleep timer done. stopped playback.")
             }
 
             refreshNotificationAndBroadcast()
@@ -411,14 +442,14 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     }
 
     private fun cancelSleepTimer() {
-        timerJob?.cancel()
-        timerJob = null
+        autoPauseTimerJob?.cancel()
+        autoPauseTimerJob = null
         autoStopTimeLeft = null
     }
 
     private fun refreshNotificationAndBroadcast() {
         val state = playState ?: return
-        val notification = buildSongNotification(state)
+        val notification = buildSongNotification() ?: return
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
         notificationManager.notify(NOTIFICATION_ID, notification)
@@ -519,6 +550,17 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         return RepeatMode.entries[nextIndex]
     }
 
+    private fun Intent.extractQueue(): ArrayList<Song> {
+        val list = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getParcelableArrayListExtra(EXTRA_QUEUE, Song::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            getParcelableArrayListExtra<Song>(EXTRA_QUEUE)
+        } ?: arrayListOf()
+
+        return list
+    }
+
     companion object {
         private const val REFRESH_FREQUENCY = 1000L
 
@@ -549,6 +591,8 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         const val VISUALIZER_AUDIO_FEATURES = "VISUALIZER_AUDIO_FEATURES"
         const val VISUALIZER_FFT_FEATURES = "VISUALIZER_FFT_FEATURES"
 
-        const val NOTIFICATION_ID = 1001
+        const val AUTO_STOP_TIMEOUT = 30 * 60 * 1_000L // minutes * seconds * millis
+
+        const val NOTIFICATION_ID = 69420
     }
 }

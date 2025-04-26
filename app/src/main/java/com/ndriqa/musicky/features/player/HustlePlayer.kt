@@ -51,7 +51,7 @@ import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 import kotlinx.coroutines.delay
 
-private const val TRANSITION_TIME = 250
+private const val TRANSITION_TIME = 150
 
 @Composable
 fun HustlePlayer(

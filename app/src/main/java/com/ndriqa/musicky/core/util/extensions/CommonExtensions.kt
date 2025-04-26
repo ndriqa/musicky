@@ -10,7 +10,6 @@ import android.os.Parcelable
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.compose.ui.graphics.Path
-import androidx.lifecycle.ViewModel
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.data.VisualizerType
 import timber.log.Timber
@@ -53,10 +52,6 @@ fun Vibrator.bzz() {
 
 fun ZonedDateTime.formatDateTime(): String {
     return this.toLocalDate().toString()
-}
-
-fun ViewModel.simpleLog(text: String) {
-    Timber.tag(this::class.java.simpleName).d(text)
 }
 
 fun Song.contains(query: String): Boolean {
@@ -165,4 +160,8 @@ inline fun <reified T : Parcelable> Intent.getSafeParcelableExtra(key: String): 
 
 inline fun <T> T?.ifNull(producer: () -> T): T {
     return this ?: producer()
+}
+
+fun Any.debugLog(text: String, error: Throwable? = null) {
+    Timber.tag(this.javaClass.simpleName).d(error, text)
 }
