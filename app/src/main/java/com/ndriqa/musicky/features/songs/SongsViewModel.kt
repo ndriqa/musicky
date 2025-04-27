@@ -18,6 +18,7 @@ import com.ndriqa.musicky.data.repositories.SongsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -77,7 +78,13 @@ class SongsViewModel @Inject constructor(
         return songsRepository.getAllSongs()
     }
 
-    private fun getAllSongs(context: Context): List<Song> {
+    private suspend fun getAllSongs(context: Context): List<Song> {
+        /**
+         * delay needed to avoid rare race condition where content access crashes
+         * system may take a few ms to finalize permission grants internally after user accepts
+         * happens more often on old Android versions (e.g., API 26) or slower devices
+         */
+        delay(100)
         val songList = mutableListOf<Song>()
 
         val uri = getAudioMediaUriCompat()

@@ -190,6 +190,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         stopProgressUpdates()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+        sendStateStoppedBroadcast()
     }
 
     private fun pause() {
@@ -339,27 +340,27 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         val shuffleAction = Intent(this, PlayerService::class.java)
             .apply { action = ACTION_TOGGLE_SHUFFLE }
             .let { intent -> PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_IMMUTABLE) }
-            .let { pendingIntent -> NotificationCompat.Action(shuffleIconResId, "", pendingIntent) }
+            .let { pendingIntent -> NotificationCompat.Action(shuffleIconResId, "shuffle", pendingIntent) }
         val prevAction = Intent(this, PlayerService::class.java)
             .apply { action = ACTION_PREVIOUS }
             .let { intent -> PendingIntent.getService(this, 1, intent, PendingIntent.FLAG_IMMUTABLE) }
-            .let { pendingIntent -> NotificationCompat.Action(R.drawable.ic_prev, "", pendingIntent) }
+            .let { pendingIntent -> NotificationCompat.Action(R.drawable.ic_prev, "prev", pendingIntent) }
         val playPauseAction = Intent(this, PlayerService::class.java)
             .apply { action = if (isPlaying) ACTION_PAUSE else ACTION_RESUME }
             .let { intent -> PendingIntent.getService(this, 2, intent, PendingIntent.FLAG_IMMUTABLE) }
-            .let { pendingIntent -> NotificationCompat.Action(playIconResId, "", pendingIntent) }
+            .let { pendingIntent -> NotificationCompat.Action(playIconResId, "play", pendingIntent) }
         val nextAction = Intent(this, PlayerService::class.java)
             .apply { action = ACTION_NEXT }
             .let { intent -> PendingIntent.getService(this, 3, intent, PendingIntent.FLAG_IMMUTABLE) }
-            .let { pendingIntent -> NotificationCompat.Action(R.drawable.ic_next, "", pendingIntent) }
+            .let { pendingIntent -> NotificationCompat.Action(R.drawable.ic_next, "next", pendingIntent) }
         val cancelAction = Intent(this, PlayerService::class.java)
             .apply { action = ACTION_STOP }
             .let { intent -> PendingIntent.getService(this, 4, intent, PendingIntent.FLAG_IMMUTABLE) }
-            .let { pendingIntent -> NotificationCompat.Action(R.drawable.ic_musicky_logo, "", pendingIntent) }
+//            .let { pendingIntent -> NotificationCompat.Action(R.drawable.ic_close, "cancel", pendingIntent) }
 
         val mediaStyle = MediaNotificationCompat.MediaStyle()
-//            .setShowCancelButton(true)
-//            .setCancelButtonIntent(cancelAction)
+            .setShowCancelButton(true)
+            .setCancelButtonIntent(cancelAction)
             .setMediaSession(mediaSession.sessionToken)
             .setShowActionsInCompactView(1, 2, 3)
 
@@ -371,11 +372,10 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
             .addAction(prevAction)
             .addAction(playPauseAction)
             .addAction(nextAction)
-            .addAction(cancelAction)
+//            .addAction(cancelAction)
             .setStyle(mediaStyle)
             .setOnlyAlertOnce(true)
             .setOngoing(isPlaying)
-            .setProgress(maxProgress, progress, false)
             .build()
     }
 

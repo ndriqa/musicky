@@ -1,5 +1,8 @@
 package com.ndriqa.musicky.navigation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
@@ -31,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -92,7 +96,13 @@ fun AppNavigation(
     )
 
     LaunchedEffect(minAudioLength) {
-        if (!hasDeniedMediaPermission) {
+        val mediaPermissionKey = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_AUDIO
+        } else Manifest.permission.READ_EXTERNAL_STORAGE
+        val mediaPermission = ContextCompat.checkSelfPermission(context, mediaPermissionKey)
+        val mediaPermissionGranted = mediaPermission == PackageManager.PERMISSION_GRANTED
+
+        if (mediaPermissionGranted) {
             songsViewModel.startLoadingSongs(context)
         }
     }
