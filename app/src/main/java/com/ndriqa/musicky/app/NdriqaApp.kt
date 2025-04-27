@@ -1,6 +1,7 @@
 package com.ndriqa.musicky.app
 
 import android.app.Application
+import com.google.firebase.FirebaseApp
 import com.ndriqa.musicky.BuildConfig
 import com.ndriqa.musicky.core.util.notifications.NotificationHelper
 import dagger.hilt.android.HiltAndroidApp
@@ -26,6 +27,6 @@ class NdriqaApp: Application() {
     }
 
     private fun initializeFirebase() {
-//        FirebaseApp.initializeApp(this)
+        FirebaseApp.initializeApp(this)
     }
 }

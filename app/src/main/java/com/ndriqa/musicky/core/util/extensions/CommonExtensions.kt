@@ -10,6 +10,7 @@ import android.os.Parcelable
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.compose.ui.graphics.Path
+import com.ndriqa.musicky.core.data.Album
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.data.VisualizerType
 import timber.log.Timber
@@ -58,6 +59,11 @@ fun Song.contains(query: String): Boolean {
     return title.contains(query, ignoreCase = true)
             || artist.contains(query, ignoreCase = true)
             || (album?.contains(query, ignoreCase = true) == true)
+}
+
+fun Album.contains(query: String): Boolean {
+    return name.contains(query, ignoreCase = true)
+            || songs.any { it.contains(query) }
 }
 
 fun Uri.loadAsBitmap(context: Context): Bitmap? {

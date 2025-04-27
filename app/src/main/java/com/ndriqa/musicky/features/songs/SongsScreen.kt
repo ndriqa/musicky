@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +54,7 @@ import com.ndriqa.musicky.navigation.Screens
 import com.ndriqa.musicky.ui.theme.PaddingCompact
 import com.ndriqa.musicky.ui.theme.TopBarButtonsSize
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SongsScreen(
     navController: NavController,
@@ -78,10 +80,16 @@ fun SongsScreen(
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(MusicTab.Songs.ordinal) }
 
     val search by songsViewModel.query.collectAsState()
+    val isLoading by songsViewModel.isLoading.collectAsState()
+
     var isSearchVisible by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     var searchHasFocus by remember { mutableStateOf(false) }
+
+    fun reloadSongsList() {
+        songsViewModel.startLoadingSongs(context)
+    }
 
     fun clearSearchFocus() {
         focusManager.clearFocus()

@@ -24,7 +24,10 @@ import com.ndriqa.musicky.ui.theme.MusicIconArtworkSizeCompact
 import com.ndriqa.musicky.ui.theme.PaddingCompact
 
 @Composable
-internal fun ColumnScope.NoInfoUi(selectedTab: MusicTab) {
+internal fun ColumnScope.NoInfoUi(
+    selectedTab: MusicTab,
+    modifier: Modifier = Modifier
+) {
     @StringRes val noInfoTextResId = when(selectedTab) {
         MusicTab.Songs -> R.string.where_the_songs_at
         MusicTab.Albums -> R.string.where_the_albums_at
@@ -32,10 +35,7 @@ internal fun ColumnScope.NoInfoUi(selectedTab: MusicTab) {
     val contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .7f)
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .weight(1F)
-            .padding(PaddingCompact),
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(PaddingCompact, Alignment.CenterVertically)
     ) {

@@ -41,19 +41,23 @@ class SongsViewModel @Inject constructor(
     private val _searchText = MutableStateFlow("")
 
     val query = _searchText.asStateFlow()
-
     val allSongs = _songs.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading = _isLoading.asStateFlow()
+
     val songs = combine(_songs, _searchText) { allSongs, query ->
         allSongs.filter { it.contains(query) }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val albums = _songs.map { allSongs ->
+    val albums = combine(_songs, _searchText) { allSongs, query ->
         allSongs
             .groupBy { it.album }
             .map { Album(
                 name = it.key ?: context.getString(R.string.unknown),
                 songs = it.value
             ) }
+            .filter { it.contains(query) }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val requestScopedDelete = MutableSharedFlow<Uri?>()
@@ -62,6 +66,7 @@ class SongsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, DataStoreManager.DEFAULT_MIN_AUDIO_LENGTH)
 
     fun startLoadingSongs(context: Context) {
+        _isLoading.value = true
         viewModelScope.launch(Dispatchers.IO) {
             getCachedSongs().let { cachedSongs ->
                 _songs.value = cachedSongs
@@ -71,6 +76,8 @@ class SongsViewModel @Inject constructor(
                 _songs.value = foundSongs
                 songsRepository.syncSongs(foundSongs)
             }
+
+            _isLoading.value = false
         }
     }
 

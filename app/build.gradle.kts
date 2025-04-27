@@ -7,8 +7,8 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.ksp)
-//    alias(libs.plugins.google.services)
-//    alias(libs.plugins.google.crashlytics)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.google.crashlytics)
 }
 
 android {
@@ -85,8 +85,8 @@ dependencies {
     implementation(libs.dagger.hilt)
     implementation(libs.accompanist.ui.controller)
     implementation(libs.kotlinx.serialization)
-//    implementation(libs.google.firebase.analytics)
-//    implementation(libs.google.firebase.crashlytics)
+    implementation(libs.google.firebase.analytics)
+    implementation(libs.google.firebase.crashlytics)
     implementation(libs.room)
 //    implementation(libs.android.ads)
     implementation(libs.google.play.review)
