@@ -4,9 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import androidx.annotation.VisibleForTesting
 import androidx.core.content.ContextCompat
+import androidx.core.content.IntentCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ndriqa.musicky.core.data.AudioFeatures
@@ -18,7 +18,6 @@ import com.ndriqa.musicky.core.services.PlayerService
 import com.ndriqa.musicky.core.services.PlayerService.Companion.VISUALIZER_AUDIO_FEATURES
 import com.ndriqa.musicky.core.services.PlayerService.Companion.VISUALIZER_FFT_FEATURES
 import com.ndriqa.musicky.core.services.PlayerService.Companion.VISUALIZER_WAVEFORM
-import com.ndriqa.musicky.core.util.extensions.getSafeParcelableExtra
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,8 +37,9 @@ class PlayerViewModel @Inject constructor(
 
         override fun onReceive(context: Context?, intent: Intent?) {
             intent ?: return
-            val playingState = intent.getSafeParcelableExtra<PlayingState>(PlayerService.EXTRA_PLAYING_STATE)
-            playingState?.let { newState -> _playingState.value = newState }
+            IntentCompat
+                .getParcelableExtra(intent, PlayerService.EXTRA_PLAYING_STATE, PlayingState::class.java)
+                ?. let { newState -> _playingState.value = newState }
         }
     }
 
@@ -49,10 +49,12 @@ class PlayerViewModel @Inject constructor(
                 getByteArrayExtra(VISUALIZER_WAVEFORM)
                     ?.let { updateWaveform(it)  }
 
-                getSafeParcelableExtra<AudioFeatures>(VISUALIZER_AUDIO_FEATURES)
+                IntentCompat
+                    .getParcelableExtra(this, VISUALIZER_AUDIO_FEATURES, AudioFeatures::class.java)
                     ?.let { updateAudioFeatures(it) }
 
-                getSafeParcelableExtra<FftFeatures>(VISUALIZER_FFT_FEATURES)
+                IntentCompat
+                    .getParcelableExtra(this, VISUALIZER_FFT_FEATURES, FftFeatures::class.java)
                     ?.let { updateFftFeatures(it) }
             }
         }

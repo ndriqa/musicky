@@ -1,12 +1,10 @@
 package com.ndriqa.musicky.core.util.extensions
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
-import android.os.Parcelable
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.compose.ui.graphics.Path
@@ -153,15 +151,6 @@ fun ByteArray.waveformToPath(
     }
 
     return path
-}
-
-inline fun <reified T : Parcelable> Intent.getSafeParcelableExtra(key: String): T? {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        getParcelableExtra(key, T::class.java)
-    } else {
-        @Suppress("DEPRECATION")
-        getParcelableExtra(key)
-    }
 }
 
 inline fun <T> T?.ifNull(producer: () -> T): T {

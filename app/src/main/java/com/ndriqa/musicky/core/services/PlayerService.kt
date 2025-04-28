@@ -7,12 +7,12 @@ import android.app.Service
 import android.content.Intent
 import android.media.MediaPlayer
 import android.media.audiofx.Visualizer
-import android.os.Build
 import android.os.IBinder
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.content.IntentCompat
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.RepeatMode
@@ -29,7 +29,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import androidx.media.app.NotificationCompat as MediaNotificationCompat
 
 class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener {
     private var mediaPlayer: MediaPlayer? = null
@@ -158,7 +157,10 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
 
     private fun startPlayback(intent: Intent) {
         highCaptureRateEnabled = intent.getBooleanExtra(EXTRA_HIGH_CAPTURE_RATE, false)
-        val newQueue = intent.extractQueue()
+        val newQueue = IntentCompat
+            .getParcelableArrayListExtra(intent, EXTRA_QUEUE, Song::class.java)
+            ?.filterNotNull()
+            ?: arrayListOf()
         val songPath = intent.getStringExtra(EXTRA_SONG_PATH) ?: newQueue.firstOrNull()?.data
 
         if (newQueue.isNotEmpty()) {
@@ -358,7 +360,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
             .let { intent -> PendingIntent.getService(this, 4, intent, PendingIntent.FLAG_IMMUTABLE) }
 //            .let { pendingIntent -> NotificationCompat.Action(R.drawable.ic_close, "cancel", pendingIntent) }
 
-        val mediaStyle = MediaNotificationCompat.MediaStyle()
+        val mediaStyle = androidx.media.app.NotificationCompat.MediaStyle()
             .setShowCancelButton(true)
             .setCancelButtonIntent(cancelAction)
             .setMediaSession(mediaSession.sessionToken)
@@ -548,17 +550,6 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     fun RepeatMode.calculateNextMode(): RepeatMode {
         val nextIndex = (ordinal + 1) % RepeatMode.entries.size
         return RepeatMode.entries[nextIndex]
-    }
-
-    private fun Intent.extractQueue(): ArrayList<Song> {
-        val list = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            getParcelableArrayListExtra(EXTRA_QUEUE, Song::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            getParcelableArrayListExtra<Song>(EXTRA_QUEUE)
-        } ?: arrayListOf()
-
-        return list
     }
 
     companion object {
