@@ -124,6 +124,7 @@ fun ByteArray.waveformToPath(
             }
 
             path.lineTo(width, height)
+            path.close()
         }
 
         VisualizerType.Circular -> {
