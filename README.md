@@ -19,7 +19,7 @@
 ## 🛠️ Built With
 
 - Kotlin + Jetpack Compose
-- Media3 ExoPlayer
+- Media3
 - Room + DataStore
 - Firebase Analytics & Crashlytics
 - Modern Android Architecture (ViewModel, Clean layers, etc.)
