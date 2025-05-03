@@ -8,22 +8,11 @@
 
 - 🎧 Play local audio files with clean UI
 - 📊 Live waveform visualizer that reacts to music
-- 🧠 AI-powered **Dream Interpreter** using OpenAI API
 - 🏷️ Auto-detects and displays metadata (title, artist, etc.)
 - 💾 Local caching with Room for fast loading
 - 🧠 User preferences stored with DataStore
 - 🔥 Firebase Analytics and Crashlytics integrated
 - 📦 No user accounts, no tracking — **privacy first**
-
----
-
-## 🧠 Dream Interpreter (Bonus Feature)
-
-Musicky lets users write down their dreams and receive AI-generated interpretations 🪄 using OpenAI’s GPT-3.5-turbo-0125.  
-Each user gets:
-- 3 free interpretations
-- 2 extra via rewarded ads per day
-- Option to purchase more ($0.99 each)
 
 ---
 
@@ -33,7 +22,6 @@ Each user gets:
 - Media3 ExoPlayer
 - Room + DataStore
 - Firebase Analytics & Crashlytics
-- OpenAI API
 - Modern Android Architecture (ViewModel, Clean layers, etc.)
 
 ---
