@@ -50,6 +50,15 @@ Contact: [ndricimrrahmani@gmail.com](mailto:ndricimrrahmani@gmail.com)
 
 ## 🤝 Contributing
 
+### 🔧 Setup
+
+1. Clone the repo
+2. In the `app/` folder, rename the dummy Firebase config: 
+   - from `app/google-services.json.dummy` 
+   - to `app/google-services.json`
+
+### PRs
+
 Pull requests are welcome — but first, please read the [Contributing Guide](./CONTRIBUTING.md).
 
 ## 👉 Got an idea or bug fix?  
