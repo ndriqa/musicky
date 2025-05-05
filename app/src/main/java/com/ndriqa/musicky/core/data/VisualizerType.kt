@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BlurCircular
 import androidx.compose.material.icons.rounded.MonitorHeart
 import androidx.compose.material.icons.rounded.ViewTimeline
+import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class VisualizerType(
@@ -14,12 +15,16 @@ enum class VisualizerType(
         title = "Center Line",
         icon = Icons.Rounded.MonitorHeart
     ),
-    LineBottom(
-        title = "Bottom Line",
+    LineSmooth(
+        title = "Smooth Line",
+        icon = Icons.Rounded.Waves
+    ),
+    Bars(
+        title = "Bars",
         icon = Icons.Rounded.ViewTimeline
     ),
     Circular(
         title = "Circular",
         icon = Icons.Rounded.BlurCircular
-    )
+    ),
 }

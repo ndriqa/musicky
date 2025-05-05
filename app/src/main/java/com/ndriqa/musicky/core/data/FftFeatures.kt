@@ -16,6 +16,6 @@ data class FftFeatures(
         get() = bass > BASS_THRESHOLD
 
     companion object {
-        private const val BASS_THRESHOLD = 90
+        private const val BASS_THRESHOLD = 80
     }
 }

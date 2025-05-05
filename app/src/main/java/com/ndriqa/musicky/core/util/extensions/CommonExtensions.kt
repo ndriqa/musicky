@@ -80,6 +80,6 @@ fun Any.debugLog(text: String, error: Throwable? = null) {
 }
 
 fun VisualizerType.correctRotation(): Modifier = when(this) {
-    VisualizerType.LineBottom -> Modifier.rotate(90f)
+    VisualizerType.Bars -> Modifier.rotate(90f)
     else -> Modifier
 }

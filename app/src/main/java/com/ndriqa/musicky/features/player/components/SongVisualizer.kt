@@ -34,7 +34,11 @@ internal fun ColumnScope.SongVisualizer(
     type: VisualizerType = VisualizerType.LineCenter
 ) {
     val lineColor = MaterialTheme.colorScheme.onPrimaryContainer
-    val lineWidth = if (fftFeatures.bass > 80) 2.dp else 1.dp
+    val lineWidth = when {
+        type == VisualizerType.Bars -> 1.dp
+        fftFeatures.isBass -> 2.dp
+        else -> 1.dp
+    }
 
     Box(
         modifier = modifier
