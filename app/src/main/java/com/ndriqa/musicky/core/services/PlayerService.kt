@@ -582,7 +582,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         const val VISUALIZER_AUDIO_FEATURES = "VISUALIZER_AUDIO_FEATURES"
         const val VISUALIZER_FFT_FEATURES = "VISUALIZER_FFT_FEATURES"
 
-        const val AUTO_STOP_TIMEOUT = 30 * 60 * 1_000L // minutes * seconds * millis
+        const val AUTO_STOP_TIMEOUT = 10 * 60 * 1_000L // minutes * seconds * millis
 
         const val NOTIFICATION_ID = 69420
     }

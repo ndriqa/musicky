@@ -60,7 +60,8 @@ fun SongsScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
     songsViewModel: SongsViewModel,
-    playerViewModel: PlayerViewModel
+    playerViewModel: PlayerViewModel,
+    onHustlePlayerExpandedToggle: (Boolean) -> Unit = {  }
 ) {
     val allSongs by songsViewModel.allSongs.collectAsState()
     val songs by songsViewModel.songs.collectAsState()
@@ -109,6 +110,9 @@ fun SongsScreen(
         val prevSongs = allSongs.subList(0, songIndex)
         val queue = nextSongs + prevSongs
 
+        if (currentPlayingSong == null) {
+            onHustlePlayerExpandedToggle(true)
+        }
         playerViewModel.setQueue(queue)
         playerViewModel.play(context, song)
     }

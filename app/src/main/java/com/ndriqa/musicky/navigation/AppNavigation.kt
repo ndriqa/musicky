@@ -75,6 +75,10 @@ fun AppNavigation(
     val isHustlePlayerVisible by remember { derivedStateOf { playState.currentSong != null } }
     var isHustlePlayerExpanded by remember { mutableStateOf(false) }
 
+    fun onHustlePlayerExpandedToggle(enabled: Boolean) {
+        isHustlePlayerExpanded = enabled
+    }
+
     RecordingPermissionHandling(
         onPermissionGranted = { hasDeniedRecordingPermission = false },
         onPermissionDenied = { hasDeniedRecordingPermission = true },
@@ -125,7 +129,7 @@ fun AppNavigation(
         modifier = Modifier,
         floatingActionButton = { HustlePlayer(
             hasVisualizerRecordingPermission = !hasDeniedRecordingPermission,
-            onExpandedUpdate = { isHustlePlayerExpanded = it },
+            onExpandedUpdate = ::onHustlePlayerExpandedToggle,
             navController = navController,
             isExpanded = isHustlePlayerExpanded,
             isVisible = isHustlePlayerVisible,
@@ -172,7 +176,8 @@ fun AppNavigation(
                         SongsScreen(
                             navController = navController,
                             songsViewModel = songsViewModel,
-                            playerViewModel = playerViewModel
+                            playerViewModel = playerViewModel,
+                            onHustlePlayerExpandedToggle = ::onHustlePlayerExpandedToggle
                         )
                     }
                     composable<Screens.Settings> {
