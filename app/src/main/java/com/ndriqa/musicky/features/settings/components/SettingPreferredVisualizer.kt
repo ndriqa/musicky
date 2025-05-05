@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.VisualizerType
+import com.ndriqa.musicky.core.util.extensions.correctRotation
 import com.ndriqa.musicky.ui.theme.PaddingCompact
 
 @Composable
@@ -45,7 +46,8 @@ internal fun ColumnScope.SettingPreferredVisualizer(
                 ) {
                     Icon(
                         imageVector = preferredVisualizer.icon,
-                        contentDescription = null
+                        contentDescription = null,
+                        modifier = preferredVisualizer.correctRotation()
                     )
                     Spacer(modifier = Modifier.size(PaddingCompact))
                     Text(preferredVisualizer.title)
@@ -65,7 +67,8 @@ internal fun ColumnScope.SettingPreferredVisualizer(
                             },
                             leadingIcon = { Icon(
                                 imageVector = type.icon,
-                                contentDescription = null
+                                contentDescription = null,
+                                modifier = type.correctRotation()
                             ) },
                         )
                     }

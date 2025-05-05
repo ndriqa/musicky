@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.ndriqa.musicky.core.data.VisualizerType
+import com.ndriqa.musicky.core.util.extensions.correctRotation
 import com.ndriqa.musicky.ui.theme.PaddingCompact
 import com.ndriqa.musicky.ui.theme.PaddingMini
 
@@ -34,6 +35,7 @@ internal fun VisualizerSelector(
             Icon(
                 imageVector = selectedVisualizerType.icon,
                 contentDescription = null,
+                modifier = selectedVisualizerType.correctRotation()
             )
         }
 
@@ -51,7 +53,8 @@ internal fun VisualizerSelector(
                     },
                     leadingIcon = { Icon(
                         imageVector = type.icon,
-                        contentDescription = null
+                        contentDescription = null,
+                        type.correctRotation()
                     ) }
                 )
             }
