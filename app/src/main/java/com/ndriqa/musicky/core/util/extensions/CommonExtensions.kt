@@ -79,7 +79,7 @@ fun Any.debugLog(text: String, error: Throwable? = null) {
     Timber.tag(this.javaClass.simpleName).d(error, text)
 }
 
-fun VisualizerType.correctRotation(): Modifier = when(this) {
-    VisualizerType.Bars -> Modifier.rotate(90f)
-    else -> Modifier
+fun Modifier.correctRotation(visualizerType: VisualizerType): Modifier = when(visualizerType) {
+    VisualizerType.Bars -> this.rotate(90f)
+    else -> this
 }

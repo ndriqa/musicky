@@ -35,7 +35,7 @@ internal fun VisualizerSelector(
             Icon(
                 imageVector = selectedVisualizerType.icon,
                 contentDescription = null,
-                modifier = selectedVisualizerType.correctRotation()
+                modifier = Modifier.correctRotation(selectedVisualizerType)
             )
         }
 
@@ -54,7 +54,7 @@ internal fun VisualizerSelector(
                     leadingIcon = { Icon(
                         imageVector = type.icon,
                         contentDescription = null,
-                        type.correctRotation()
+                        modifier = Modifier.correctRotation(type)
                     ) }
                 )
             }

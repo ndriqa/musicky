@@ -47,7 +47,7 @@ internal fun ColumnScope.SettingPreferredVisualizer(
                     Icon(
                         imageVector = preferredVisualizer.icon,
                         contentDescription = null,
-                        modifier = preferredVisualizer.correctRotation()
+                        modifier = Modifier.correctRotation(preferredVisualizer)
                     )
                     Spacer(modifier = Modifier.size(PaddingCompact))
                     Text(preferredVisualizer.title)
@@ -68,7 +68,7 @@ internal fun ColumnScope.SettingPreferredVisualizer(
                             leadingIcon = { Icon(
                                 imageVector = type.icon,
                                 contentDescription = null,
-                                modifier = type.correctRotation()
+                                modifier = Modifier.correctRotation(type)
                             ) },
                         )
                     }
