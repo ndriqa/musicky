@@ -7,12 +7,16 @@ import android.app.Service
 import android.content.Intent
 import android.media.MediaPlayer
 import android.media.audiofx.Visualizer
+import android.net.Uri
 import android.os.IBinder
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import androidx.annotation.OptIn
 import androidx.core.app.NotificationCompat
 import androidx.core.content.IntentCompat
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.RepeatMode
@@ -29,9 +33,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import androidx.core.net.toUri
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 
-class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener {
-    private var mediaPlayer: MediaPlayer? = null
+class PlayerService : Service(), Player.Listener {
+    private lateinit var exoPlayer: ExoPlayer
     private var audioVisualizer: Visualizer? = null
     private val fftAnalyzer = FftAnalyzer()
     private val audioAnalyzer = AudioAnalyzer()
@@ -62,12 +69,8 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
                 RepeatMode.None -> null
             }
             val nextSong = nextIndex?.let { activeQueue.getOrNull(it) }
-            val isPlaying =
-                try { mediaPlayer?.isPlaying == true }
-                catch (_: IllegalStateException) { false }
-            val currentPosition =
-                try { mediaPlayer?.currentPosition?.toLong() ?: 0L }
-                catch (_: IllegalStateException) { 0L }
+            val isPlaying = exoPlayer.isPlaying
+            val currentPosition = exoPlayer.currentPosition
 
             return PlayingState(
                 currentSong = song,
@@ -84,7 +87,36 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
 
     override fun onCreate() {
         super.onCreate()
+        initializeExoPlayer()
         initializeMediaSession()
+    }
+
+    private fun initializeExoPlayer() {
+        exoPlayer = ExoPlayer.Builder(this)
+            .build()
+            .apply { addListener(this@PlayerService) }
+    }
+
+    override fun onPlaybackStateChanged(state: Int) {
+        when (state) {
+            Player.STATE_READY -> {
+                refreshNotificationAndBroadcast()
+                startVisualizerUpdates()
+                startProgressUpdates()
+            }
+            Player.STATE_ENDED -> next()
+            else -> {}
+        }
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun startVisualizerUpdates() {
+        try { setupVisualizer(exoPlayer.audioSessionId) }
+        catch (e: Exception) { Timber.e(e) }
+    }
+
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+        refreshNotificationAndBroadcast()
     }
 
     private fun initializeMediaSession() {
@@ -95,7 +127,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
                 override fun onPause() = pause()
                 override fun onSkipToNext() = next()
                 override fun onSkipToPrevious() = previous()
-                override fun onSeekTo(pos: Long) = seekTo(pos.toInt())
+                override fun onSeekTo(pos: Long) = seekTo(pos)
                 override fun onSetRepeatMode(repeatMode: Int) = toggleRepeatMode(repeatMode)
                 override fun onSetShuffleMode(shuffleMode: Int) = toggleShuffleMode(shuffleMode)
             })
@@ -122,9 +154,10 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         return START_STICKY
     }
 
+    @OptIn(UnstableApi::class)
     private fun toggleHighRate(intent: Intent) {
         highCaptureRateEnabled = intent.getBooleanExtra(EXTRA_HIGH_CAPTURE_RATE, false)
-        mediaPlayer?.audioSessionId?.let { sessionId -> setupVisualizer(sessionId) }
+        setupVisualizer(exoPlayer.audioSessionId)
     }
 
     private fun toggleTimer(intent: Intent) {
@@ -151,7 +184,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     }
 
     private fun seekTo(intent: Intent) {
-        val pos = intent.getIntExtra(EXTRA_SEEK_POSITION, 0)
+        val pos = intent.getLongExtra(EXTRA_SEEK_POSITION, 0L)
         seekTo(pos)
     }
 
@@ -185,9 +218,8 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     }
 
     private fun stopPlayback() {
-        mediaPlayer?.stop()
-        mediaPlayer?.release()
-        mediaPlayer = null
+        exoPlayer.stop()
+        exoPlayer.release()
 
         stopProgressUpdates()
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -196,7 +228,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     }
 
     private fun pause() {
-        mediaPlayer?.pause()
+        exoPlayer.pause()
         refreshNotificationAndBroadcast()
         stopProgressUpdates()
         startSelfSabotage()
@@ -204,29 +236,29 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
 
     private fun resume() {
         stopSelfSabotage()
-        mediaPlayer?.start()
+        exoPlayer.play()
         refreshNotificationAndBroadcast()
         startProgressUpdates()
     }
 
-    private fun seekTo(position: Int) {
-        mediaPlayer?.seekTo(position)
+    private fun seekTo(position: Long) {
+        exoPlayer.seekTo(position)
         refreshNotificationAndBroadcast()
     }
 
     private fun playCurrent(goingForward: Boolean = true) {
         val song = playState?.currentSong ?: return
+        buildSongNotification()?.let { startForeground(NOTIFICATION_ID, it) }
 
         try {
-            mediaPlayer?.release()
-            mediaPlayer = MediaPlayer().apply {
-                setDataSource(song.data)
-                setOnPreparedListener(this@PlayerService)
-                setOnCompletionListener(this@PlayerService)
-                prepareAsync()
+            exoPlayer.apply {
+                stop()
+                clearMediaItems()
+                setMediaItem(MediaItem.fromUri(song.data.toUri()))
+                prepare()
+                playWhenReady = true
             }
 
-            buildSongNotification()?.let { startForeground(NOTIFICATION_ID, it) }
             refreshNotificationAndBroadcast()
         } catch (e: Exception) {
             debugLog("song file missing or can't be played: ${song.data}", e)
@@ -279,18 +311,6 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         refreshNotificationAndBroadcast()
     }
 
-    override fun onPrepared(mp: MediaPlayer) {
-        mp.start()
-        try { setupVisualizer(mp.audioSessionId) }
-        catch (e: Exception) { Timber.e(e) }
-        // if not with progress updates, then call to update noti and broad manually here
-        startProgressUpdates()
-    }
-
-    override fun onCompletion(mp: MediaPlayer?) {
-        next()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         cleanUpAudioVisualizer()
@@ -304,8 +324,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     }
 
     private fun cleanUpMediaPlayer() {
-        mediaPlayer?.release()
-        mediaPlayer = null
+        exoPlayer.release()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -337,7 +356,14 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         val progress = state.currentPosition.toInt()
 
         val playIconResId = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play
-        val shuffleIconResId = if (state.isShuffleEnabled) R.drawable.ic_shuffle_on else R.drawable.ic_shuffle_off
+        val shuffleIconResId =
+            if (state.isShuffleEnabled) R.drawable.ic_shuffle_on
+            else R.drawable.ic_shuffle_off
+        val repeatModeResId = when(state.repeatMode) {
+            RepeatMode.All -> R.drawable.ic_repeat_all
+            RepeatMode.One -> R.drawable.ic_repeat_one
+            RepeatMode.None -> R.drawable.ic_repeat_none
+        }
 
         val shuffleAction = Intent(this, PlayerService::class.java)
             .apply { action = ACTION_TOGGLE_SHUFFLE }
@@ -355,9 +381,14 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
             .apply { action = ACTION_NEXT }
             .let { intent -> PendingIntent.getService(this, 3, intent, PendingIntent.FLAG_IMMUTABLE) }
             .let { pendingIntent -> NotificationCompat.Action(R.drawable.ic_next, "next", pendingIntent) }
+        val repeatAction = Intent(this, PlayerService::class.java)
+            .apply { action = ACTION_TOGGLE_REPEAT }
+            .let { intent -> PendingIntent.getService(this, 4, intent, PendingIntent.FLAG_IMMUTABLE) }
+            .let { pendingIntent -> NotificationCompat.Action(repeatModeResId, "repeat", pendingIntent) }
+
         val cancelAction = Intent(this, PlayerService::class.java)
             .apply { action = ACTION_STOP }
-            .let { intent -> PendingIntent.getService(this, 4, intent, PendingIntent.FLAG_IMMUTABLE) }
+            .let { intent -> PendingIntent.getService(this, 5, intent, PendingIntent.FLAG_IMMUTABLE) }
 //            .let { pendingIntent -> NotificationCompat.Action(R.drawable.ic_close, "cancel", pendingIntent) }
 
         val mediaStyle = androidx.media.app.NotificationCompat.MediaStyle()
@@ -374,7 +405,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
             .addAction(prevAction)
             .addAction(playPauseAction)
             .addAction(nextAction)
-//            .addAction(cancelAction)
+            .addAction(repeatAction)
             .setStyle(mediaStyle)
             .setOnlyAlertOnce(true)
             .setOngoing(isPlaying)
@@ -385,7 +416,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
         debugLog("started service self sabotage")
         stopForeground(STOP_FOREGROUND_DETACH)
         autoKillProcessJob?.cancel()
-        autoKillProcessJob = CoroutineScope(Dispatchers.Default).launch {
+        autoKillProcessJob = CoroutineScope(Dispatchers.Main).launch {
             delay(AUTO_STOP_TIMEOUT)
             if (playState?.isPlaying != true) {
                 sendStateStoppedBroadcast()
@@ -397,16 +428,19 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
     }
 
     fun stopSelfSabotage() {
-        autoKillProcessJob?.cancel()
+        autoKillProcessJob?.let {
+            it.cancel()
+            debugLog("canceled self sabotage")
+        }
         autoKillProcessJob = null
         buildSongNotification()?.let { startForeground(NOTIFICATION_ID, it) }
-        debugLog("canceled self sabotage")
+
     }
 
     private fun startSleepTimer(duration: Long) {
         autoStopTimeLeft = null
         autoPauseTimerJob?.cancel()
-        autoPauseTimerJob = CoroutineScope(Dispatchers.Default).launch {
+        autoPauseTimerJob = CoroutineScope(Dispatchers.Main).launch {
             var timeLeft = duration
             autoStopTimeLeft = timeLeft
 
@@ -430,7 +464,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
 
     private fun startProgressUpdates() {
         progressJob?.cancel()
-        progressJob = CoroutineScope(Dispatchers.Default).launch {
+        progressJob = CoroutineScope(Dispatchers.Main).launch {
             while (isActive) {
                 refreshNotificationAndBroadcast()
                 delay(REFRESH_FREQUENCY)
@@ -516,7 +550,7 @@ class PlayerService : Service(), MediaPlayer.OnPreparedListener, MediaPlayer.OnC
                         waveform: ByteArray,
                         samplingRate: Int
                     ) {
-                        if (mediaPlayer?.isPlaying != true) return
+                        if (!exoPlayer.isPlaying) return
                         val audioFeatures = audioAnalyzer.analyze(waveform)
                         // send waveform data to the UI using broadcast (or another mechanism)
                         Intent(ACTION_VISUALIZER_UPDATE)

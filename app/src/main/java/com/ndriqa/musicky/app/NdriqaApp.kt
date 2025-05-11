@@ -27,6 +27,8 @@ class NdriqaApp: Application() {
     }
 
     private fun initializeFirebase() {
-        FirebaseApp.initializeApp(this)
+        if (!BuildConfig.DEBUG) {
+            FirebaseApp.initializeApp(this)
+        }
     }
 }

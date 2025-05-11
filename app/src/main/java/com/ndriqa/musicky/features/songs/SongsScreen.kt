@@ -94,6 +94,7 @@ fun SongsScreen(
 
     fun clearSearchFocus() {
         focusManager.clearFocus()
+        focusRequester.freeFocus()
     }
 
     fun onTabClick(tab: MusicTab) {

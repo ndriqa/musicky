@@ -165,10 +165,10 @@ class PlayerViewModel @Inject constructor(
 
     fun seekToProgress(context: Context, progress: Float) {
         val currentMax = _playingState.value.currentSong?.duration ?: 0
-        seekTo(context, positionMillis = (currentMax * progress).toInt())
+        seekTo(context, positionMillis = (currentMax * progress).toLong())
     }
 
-    fun seekTo(context: Context, positionMillis: Int) {
+    fun seekTo(context: Context, positionMillis: Long) {
         Intent(context, PlayerService::class.java)
             .setAction(PlayerService.ACTION_SEEK_TO)
             .putExtra(PlayerService.EXTRA_SEEK_POSITION, positionMillis)

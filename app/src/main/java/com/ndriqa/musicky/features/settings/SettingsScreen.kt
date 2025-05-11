@@ -98,7 +98,7 @@ fun SettingsScreen(
             ) {
                 Text(
                     text = stringResource(R.string.settings),
-                    fontSize = 24.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
             }

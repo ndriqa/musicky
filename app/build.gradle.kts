@@ -94,6 +94,10 @@ dependencies {
     implementation(libs.timber)
     implementation(libs.lottie)
     implementation(libs.coil)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.exoplayer.dash)
+    implementation(libs.media3.ui)
+    implementation(libs.media3.ui.compose)
 
     ksp(libs.room.compiler)
     kapt(libs.dagger.hilt.compiler)

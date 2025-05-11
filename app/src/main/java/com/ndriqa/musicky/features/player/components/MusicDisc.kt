@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MusicNote
@@ -42,7 +43,7 @@ internal fun ColumnScope.MusicDisc(
     playState: PlayingState,
     modifier: Modifier = Modifier
 ) {
-    val artworkShape = RoundedCornerShape(PaddingDefault)
+    val artworkShape = CircleShape
     val fallbackIcon = rememberVectorPainter(Icons.Rounded.MusicNote)
 
     Box(

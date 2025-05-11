@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -134,7 +135,8 @@ fun HustlePlayer(
                         width = 1.dp,
                         shape = playerShape,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
-                    ),
+                    )
+                    .clip(playerShape),
                 shape = playerShape,
                 containerColor = MaterialTheme.colorScheme.primary,
                 elevation = elevation(

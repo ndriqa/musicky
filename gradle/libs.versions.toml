@@ -30,6 +30,7 @@ timber = "5.0.1"
 lottie = "6.6.4"
 coil = "3.1.0"
 media = "1.6.0"
+media3 = "1.6.1"
 
 [libraries]
 accompanist-ui-controller = { group = "com.google.accompanist", name = "accompanist-systemuicontroller", version.ref = "accompanist" }
@@ -72,6 +73,10 @@ material-icons = { group = "androidx.compose.material", name = "material-icons-e
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 lottie = { group = "com.airbnb.android", name = "lottie-compose", version.ref = "lottie" }
 coil = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
+media3-exoplayer-dash = { group = "androidx.media3", name = "media3-exoplayer-dash", version.ref = "media3" }
+media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
+media3-ui-compose = { group = "androidx.media3", name = "media3-ui-compose", version.ref = "media3" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
