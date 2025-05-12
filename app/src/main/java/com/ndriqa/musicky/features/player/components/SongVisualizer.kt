@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -31,9 +32,9 @@ internal fun ColumnScope.SongVisualizer(
     audioFeatures: AudioFeatures,
     fftFeatures: FftFeatures,
     modifier: Modifier = Modifier,
-    type: VisualizerType = VisualizerType.LineCenter
+    type: VisualizerType = VisualizerType.LineCenter,
+    lineColor: Color = MaterialTheme.colorScheme.onPrimaryContainer
 ) {
-    val lineColor = MaterialTheme.colorScheme.onPrimaryContainer
     val lineWidth = when {
         type == VisualizerType.Bars -> 1.dp
         fftFeatures.isBass -> 2.dp

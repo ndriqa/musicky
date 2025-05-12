@@ -19,7 +19,7 @@ fun ByteArray.resampleTo(
     size: Int,
     resamplingMethod: ResamplingMethod = ResamplingMethod.Mode
 ): ByteArray {
-    if (this.size <= size) return this.copyOf(size)
+    if (this.size <= size) return this.resized(size)
 
     val step = this.size / size.toFloat()
     return ByteArray(size) { i ->
@@ -31,6 +31,16 @@ fun ByteArray.resampleTo(
                 ResamplingMethod.Mode -> it.mode()
             } }
             .toInt().toByte()
+    }
+}
+
+fun ByteArray.resized(newSize: Int): ByteArray {
+    if (newSize <= 0) return ByteArray(0)
+    if (this.isEmpty()) return ByteArray(newSize) { 0 }
+
+    return ByteArray(newSize) { i ->
+        val originalIndex = (i.toFloat() / newSize * this.size).toInt().coerceIn(0, this.lastIndex)
+        this[originalIndex]
     }
 }
 

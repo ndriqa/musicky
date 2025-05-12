@@ -30,7 +30,7 @@ import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingCompact
 
 @Composable
-internal fun ColumnScope.SettingNdriqa(
+internal fun SettingNdriqa(
     modifier: Modifier = Modifier,
     onPlayStoreRate: () -> Unit,
     onDonate: () -> Unit,

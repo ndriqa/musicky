@@ -1,7 +1,7 @@
 package com.ndriqa.musicky.features.settings.components
 
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -11,7 +11,7 @@ import androidx.compose.ui.res.stringResource
 import com.ndriqa.musicky.R
 
 @Composable
-internal fun ColumnScope.SettingMinAudioLength(
+internal fun SettingMinAudioLength(
     minAudioLength: Int,
     minAudioLengthRatio: Float,
     onAudioRatioChange: (Float) -> Unit,

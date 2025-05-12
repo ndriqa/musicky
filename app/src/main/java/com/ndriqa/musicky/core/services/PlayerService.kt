@@ -34,6 +34,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import androidx.core.net.toUri
+import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 
@@ -112,7 +113,7 @@ class PlayerService : Service(), Player.Listener {
     @OptIn(UnstableApi::class)
     private fun startVisualizerUpdates() {
         try { setupVisualizer(exoPlayer.audioSessionId) }
-        catch (e: Exception) { Timber.e(e) }
+        catch (e: Exception) { Timber.d(e) }
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -157,7 +158,7 @@ class PlayerService : Service(), Player.Listener {
     @OptIn(UnstableApi::class)
     private fun toggleHighRate(intent: Intent) {
         highCaptureRateEnabled = intent.getBooleanExtra(EXTRA_HIGH_CAPTURE_RATE, false)
-        setupVisualizer(exoPlayer.audioSessionId)
+        startVisualizerUpdates()
     }
 
     private fun toggleTimer(intent: Intent) {
@@ -537,6 +538,7 @@ class PlayerService : Service(), Player.Listener {
         }
     }
 
+    @OptIn(UnstableApi::class)
     private fun setupVisualizer(audioSessionId: Int) {
         audioVisualizer?.release() // always release before setting a new one
         audioVisualizer = Visualizer(audioSessionId).apply {

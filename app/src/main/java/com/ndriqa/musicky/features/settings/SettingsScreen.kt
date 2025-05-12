@@ -125,7 +125,7 @@ fun SettingsScreen(
 
             SettingPreferredVisualizer(
                 preferredVisualizer = preferredVisualizer,
-                onVisualizerTypeUpdate = settingsViewModel::updateVisualizerType
+                onVisualizerTypeUpdate = settingsViewModel::updateVisualizerType,
             )
 
             SettingHighCaptureRate(
