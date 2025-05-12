@@ -1,7 +1,9 @@
 package com.ndriqa.musicky.core.data
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.BlurCircular
+import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.rounded.LocalFlorist
 import androidx.compose.material.icons.rounded.MonitorHeart
 import androidx.compose.material.icons.rounded.ViewTimeline
 import androidx.compose.material.icons.rounded.Waves
@@ -25,6 +27,14 @@ enum class VisualizerType(
     ),
     Circular(
         title = "Circular",
-        icon = Icons.Rounded.BlurCircular
+        icon = Icons.Outlined.Circle
     ),
+    Flower(
+        title = "Flower",
+        icon = Icons.Rounded.LocalFlorist
+    ),
+    Noise(
+        title = "Noise",
+        icon = Icons.Outlined.GridView
+    )
 }
