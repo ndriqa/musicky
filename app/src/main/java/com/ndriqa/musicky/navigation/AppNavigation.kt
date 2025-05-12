@@ -3,6 +3,7 @@ package com.ndriqa.musicky.navigation
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
@@ -77,6 +78,10 @@ fun AppNavigation(
 
     fun onHustlePlayerExpandedToggle(enabled: Boolean) {
         isHustlePlayerExpanded = enabled
+    }
+
+    BackHandler(enabled = isHustlePlayerExpanded) {
+        onHustlePlayerExpandedToggle(false)
     }
 
     RecordingPermissionHandling(
