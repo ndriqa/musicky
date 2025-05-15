@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -22,9 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ndriqa.musicky.R
@@ -40,6 +37,7 @@ import com.ndriqa.musicky.features.settings.components.SettingsItemTitle
 import com.ndriqa.musicky.navigation.musickyPlayStore
 import com.ndriqa.musicky.navigation.ndriqaDonate
 import com.ndriqa.musicky.navigation.ndriqaOtherApps
+import com.ndriqa.musicky.ui.components.TopBarUi
 import com.ndriqa.musicky.ui.theme.MusickyTheme
 import com.ndriqa.musicky.ui.theme.PaddingDefault
 
@@ -90,18 +88,10 @@ fun SettingsScreen(
         modifier = modifier,
         containerColor = Color.Transparent,
         topBar = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(PaddingDefault)
-            ) {
-                Text(
-                    text = stringResource(R.string.settings),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            TopBarUi(
+                title = stringResource(R.string.settings),
+                onNavButtonPress = navController::navigateUp
+            )
         },
         bottomBar = { Box(
             modifier = Modifier.fillMaxWidth(),
