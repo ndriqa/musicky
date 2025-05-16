@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.Album
 import com.ndriqa.musicky.core.data.Song
+import com.ndriqa.musicky.core.data.SortingMode
 import com.ndriqa.musicky.core.preferences.DataStoreManager
 import com.ndriqa.musicky.core.util.extensions.contains
 import com.ndriqa.musicky.data.repositories.SongsRepository
@@ -39,6 +40,8 @@ class SongsViewModel @Inject constructor(
 ): ViewModel() {
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     private val _searchText = MutableStateFlow("")
+    private val _preferredSortingMode = dataStoreManager.preferredSortingMode
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SortingMode.Default)
 
     val query = _searchText.asStateFlow()
     val allSongs = _songs.asStateFlow()
@@ -46,8 +49,20 @@ class SongsViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
-    val songs = combine(_songs, _searchText) { allSongs, query ->
-        allSongs.filter { it.contains(query) }
+    val songs = combine(
+        _songs,
+        _searchText,
+        _preferredSortingMode
+    ) { allSongs, query, sortMode ->
+        val filtered = allSongs.filter { it.contains(query) }
+
+        when (sortMode) {
+            SortingMode.Default -> filtered // no sort
+            SortingMode.DateAsc -> filtered.sortedBy { it.dateAdded }
+            SortingMode.DateDesc -> filtered.sortedByDescending { it.dateAdded }
+            SortingMode.NameAsc -> filtered.sortedBy { it.title.lowercase() }
+            SortingMode.NameDesc -> filtered.sortedByDescending { it.title.lowercase() }
+        }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val albums = combine(_songs, _searchText) { allSongs, query ->

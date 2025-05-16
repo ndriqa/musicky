@@ -32,6 +32,7 @@ import com.ndriqa.musicky.features.player.PlayerViewModel
 import com.ndriqa.musicky.features.settings.components.SettingHighCaptureRate
 import com.ndriqa.musicky.features.settings.components.SettingMinAudioLength
 import com.ndriqa.musicky.features.settings.components.SettingNdriqa
+import com.ndriqa.musicky.features.settings.components.SettingPreferredSortingMode
 import com.ndriqa.musicky.features.settings.components.SettingPreferredVisualizer
 import com.ndriqa.musicky.features.settings.components.SettingsItemTitle
 import com.ndriqa.musicky.navigation.musickyPlayStore
@@ -52,6 +53,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val minAudioLength by settingsViewModel.minAudioLength.collectAsState()
     val preferredVisualizer by settingsViewModel.preferredVisualizer.collectAsState()
+    val preferredSortingMode by settingsViewModel.preferredSortingMode.collectAsState()
     val highCaptureRate by settingsViewModel.highCaptureRate.collectAsState()
 
     val scrollState = rememberScrollState()
@@ -111,6 +113,11 @@ fun SettingsScreen(
                 minAudioLength = minAudioLength,
                 minAudioLengthRatio = minAudioLengthRatio,
                 onAudioRatioChange = ::onAudioRatioChange,
+            )
+
+            SettingPreferredSortingMode(
+                sortingMode = preferredSortingMode,
+                onSortingModeChange = settingsViewModel::updateSortingMode
             )
 
             SettingPreferredVisualizer(

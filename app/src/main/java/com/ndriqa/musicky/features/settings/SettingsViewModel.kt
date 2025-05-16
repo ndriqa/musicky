@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.android.play.core.review.ReviewManagerFactory
 import com.google.android.play.core.review.testing.FakeReviewManager
 import com.ndriqa.musicky.BuildConfig
+import com.ndriqa.musicky.core.data.SortingMode
 import com.ndriqa.musicky.core.data.VisualizerType
 import com.ndriqa.musicky.core.preferences.DataStoreManager
 import com.ndriqa.musicky.core.services.PlayerService
@@ -29,6 +30,9 @@ class SettingsViewModel @Inject constructor(
 
     val preferredVisualizer = dataStoreManager.defaultVisualizer
         .stateIn(viewModelScope, SharingStarted.Eagerly, VisualizerType.Circular)
+
+    val preferredSortingMode = dataStoreManager.preferredSortingMode
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SortingMode.Default)
 
     val highCaptureRate = dataStoreManager.highCaptureRate
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
@@ -72,6 +76,12 @@ class SettingsViewModel @Inject constructor(
     fun updateVisualizerType(visualizerType: VisualizerType) {
         viewModelScope.launch {
             dataStoreManager.setDefaultVisualizer(visualizerType)
+        }
+    }
+
+    fun updateSortingMode(sortingMode: SortingMode) {
+        viewModelScope.launch {
+            dataStoreManager.setPreferredSortingMode(sortingMode)
         }
     }
 }

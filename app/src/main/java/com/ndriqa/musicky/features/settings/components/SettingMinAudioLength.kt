@@ -8,7 +8,9 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import com.ndriqa.musicky.R
+import com.ndriqa.musicky.ui.theme.MusickyTheme
 
 @Composable
 internal fun SettingMinAudioLength(

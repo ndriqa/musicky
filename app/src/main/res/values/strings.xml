@@ -53,6 +53,15 @@
     <string name="rate_musicky_on_play_store">Rate Musicky on Play Store</string>
     <string name="donate_on_ko_fi">Donate on Ko-Fi</string>
     <string name="check_out_my_other_apps">Check out my other apps</string>
+    <string name="preferred_sorting_mode">Preferred Sorting Mode</string>
+    <string name="sorting_mode">Sorting Mode</string>
+
+    <string name="sort_default">Default</string>
+    <string name="sort_date_oldest">Date (Oldest First)</string>
+    <string name="sort_date_newest">Date (Newest First)</string>
+    <string name="sort_name_az">Name (A–Z)</string>
+    <string name="sort_name_za">Name (Z–A)</string>
+    <string name="is_selected">%1$s is selected</string>
 
     <plurals name="num_songs">
         <item quantity="one">%d song</item>

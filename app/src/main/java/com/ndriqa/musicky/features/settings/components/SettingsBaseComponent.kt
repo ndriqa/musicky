@@ -29,7 +29,8 @@ internal fun SettingsItemTitle(
     Text(
         text = title,
         fontSize = 18.sp,
-        fontWeight = FontWeight.Bold
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onPrimaryContainer
     )
 }
 
@@ -39,7 +40,8 @@ internal fun SettingsItemText(
 ) {
     Text(
         text = text,
-        textAlign = TextAlign.Center
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colorScheme.onPrimaryContainer
     )
 }
 
