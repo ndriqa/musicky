@@ -139,7 +139,7 @@ fun SongsScreen(
     }
 
     fun onSettingsClick() {
-        navController.navigate(Screens.Settings) { launchSingleTop = true }
+        navController.navigate(Screens.Settings()) { launchSingleTop = true }
     }
 
     LaunchedEffect(requestedSongToBeDeleted) {

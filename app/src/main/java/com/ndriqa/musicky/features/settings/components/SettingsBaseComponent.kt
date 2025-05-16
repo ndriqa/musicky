@@ -55,7 +55,6 @@ internal fun SettingsItemSection(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(PaddingCompact)
             .shadow(5.dp, cardShape)
             .clip(cardShape)
             .background(

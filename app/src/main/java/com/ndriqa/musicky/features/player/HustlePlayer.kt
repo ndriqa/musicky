@@ -44,6 +44,7 @@ import com.ndriqa.musicky.features.player.components.SongControls
 import com.ndriqa.musicky.features.player.components.SongHeaderInfo
 import com.ndriqa.musicky.features.player.components.SongTopBar
 import com.ndriqa.musicky.features.player.components.SongVisualizer
+import com.ndriqa.musicky.features.settings.SettingsKeys.KEY_VISUALIZER_TYPE
 import com.ndriqa.musicky.features.settings.SettingsViewModel
 import com.ndriqa.musicky.navigation.Screens
 import com.ndriqa.musicky.ui.theme.DiscSize
@@ -94,9 +95,14 @@ fun HustlePlayer(
         }
     }
 
-    fun onSettingsClick() {
+    fun onSettingsClick(specificSetting: String? = null) {
+        val settings = Screens.Settings(preSelectedSetting = specificSetting)
         onExpandedUpdate(false)
-        navController.navigate(Screens.Settings) { launchSingleTop = true }
+        navController.navigate(settings) { launchSingleTop = true }
+    }
+
+    fun onVisualizerClick() {
+        onSettingsClick(KEY_VISUALIZER_TYPE)
     }
 
     fun toggleTimer(millis: Long?) {
@@ -154,7 +160,7 @@ fun HustlePlayer(
                                 selectedVisualizerType = preferredVisualizer,
                                 onSettingsClick = ::onSettingsClick,
                                 onTimeSelected = ::toggleTimer,
-                                onVisualizerChange = settingsViewModel::updateVisualizerType,
+                                onVisualizerClick = ::onVisualizerClick,
                             )
                         }
                     }

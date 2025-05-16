@@ -40,6 +40,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.util.permissionHandlers.MediaPermissionHandler
 import com.ndriqa.musicky.core.util.permissionHandlers.NotificationPermissionHandler
@@ -185,11 +186,15 @@ fun AppNavigation(
                             onHustlePlayerExpandedToggle = ::onHustlePlayerExpandedToggle
                         )
                     }
-                    composable<Screens.Settings> {
+                    composable<Screens.Settings> { backStackEntry ->
+                        val navArgs = backStackEntry.toRoute<Screens.Settings>()
+                        val selectedSettingKey = navArgs.preSelectedSetting
+
                         SettingsScreen(
                             navController = navController,
                             settingsViewModel = settingsViewModel,
-                            playerViewModel = playerViewModel
+                            playerViewModel = playerViewModel,
+                            preSelectedSetting = selectedSettingKey
                         )
                     }
                 }

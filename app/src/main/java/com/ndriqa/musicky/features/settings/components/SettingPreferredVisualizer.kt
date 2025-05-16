@@ -44,6 +44,7 @@ internal fun SettingPreferredVisualizer(
     preferredVisualizer: VisualizerType,
     onVisualizerTypeUpdate: (VisualizerType) -> Unit,
     modifier: Modifier = Modifier,
+    isInitiallyExpanded: Boolean = false
 ) {
     val sampleWaveform by rememberSaveable { mutableStateOf(floweryGaussianWaveform(500)) }
 
@@ -96,7 +97,8 @@ internal fun SettingPreferredVisualizer(
                     }
                 }
             }
-        }
+        },
+        isInitiallyExpanded = isInitiallyExpanded
     )
 }
 

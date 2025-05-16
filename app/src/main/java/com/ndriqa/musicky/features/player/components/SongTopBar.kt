@@ -32,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.VisualizerType
+import com.ndriqa.musicky.core.util.extensions.correctRotation
 import com.ndriqa.musicky.core.util.extensions.ifNull
 import com.ndriqa.musicky.features.player.PlayerViewModel.Companion.TIMER_MAXIMUM_MIN
 import com.ndriqa.musicky.features.player.PlayerViewModel.Companion.TIMER_MINIMUM_MIN
@@ -45,7 +46,7 @@ fun SongTopBar(
     playingState: PlayingState,
     selectedVisualizerType: VisualizerType,
     onSettingsClick: () -> Unit,
-    onVisualizerChange: (VisualizerType) -> Unit,
+    onVisualizerClick: () -> Unit,
     onTimeSelected: (Long?) -> Unit, // millis
     modifier: Modifier = Modifier
 ) {
@@ -74,10 +75,17 @@ fun SongTopBar(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        VisualizerSelector(
-            selectedVisualizerType = selectedVisualizerType,
-            onVisualizerChange = onVisualizerChange
-        )
+
+        Button(
+            onClick = onVisualizerClick,
+            contentPadding = PaddingValues(PaddingMini)
+        ) {
+            Icon(
+                imageVector = selectedVisualizerType.icon,
+                contentDescription = null,
+                modifier = Modifier.correctRotation(selectedVisualizerType)
+            )
+        }
 
         Spacer(modifier = Modifier.weight(1f))
 

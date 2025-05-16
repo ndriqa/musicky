@@ -2,13 +2,12 @@ package com.ndriqa.musicky.features.settings
 
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
@@ -29,25 +29,31 @@ import com.ndriqa.musicky.core.preferences.DataStoreManager
 import com.ndriqa.musicky.core.preferences.DataStoreManager.Companion.MAX_AUDIO_LENGTH
 import com.ndriqa.musicky.core.preferences.DataStoreManager.Companion.MIN_AUDIO_LENGTH
 import com.ndriqa.musicky.features.player.PlayerViewModel
+import com.ndriqa.musicky.features.settings.SettingsKeys.KEY_MIN_AUDIO
+import com.ndriqa.musicky.features.settings.SettingsKeys.KEY_NDRIQA
+import com.ndriqa.musicky.features.settings.SettingsKeys.KEY_SORTING_MODE
+import com.ndriqa.musicky.features.settings.SettingsKeys.KEY_VISUALIZER_RATE
+import com.ndriqa.musicky.features.settings.SettingsKeys.KEY_VISUALIZER_TYPE
+import com.ndriqa.musicky.features.settings.components.SettingAppVersion
 import com.ndriqa.musicky.features.settings.components.SettingHighCaptureRate
 import com.ndriqa.musicky.features.settings.components.SettingMinAudioLength
 import com.ndriqa.musicky.features.settings.components.SettingNdriqa
 import com.ndriqa.musicky.features.settings.components.SettingPreferredSortingMode
 import com.ndriqa.musicky.features.settings.components.SettingPreferredVisualizer
-import com.ndriqa.musicky.features.settings.components.SettingsItemTitle
 import com.ndriqa.musicky.navigation.musickyPlayStore
 import com.ndriqa.musicky.navigation.ndriqaDonate
 import com.ndriqa.musicky.navigation.ndriqaOtherApps
 import com.ndriqa.musicky.ui.components.TopBarUi
 import com.ndriqa.musicky.ui.theme.MusickyTheme
-import com.ndriqa.musicky.ui.theme.PaddingDefault
+import com.ndriqa.musicky.ui.theme.PaddingCompact
 
 @Composable
 fun SettingsScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
     settingsViewModel: SettingsViewModel,
-    playerViewModel: PlayerViewModel
+    playerViewModel: PlayerViewModel,
+    preSelectedSetting: String? = null
 ) {
     val activity = LocalActivity.current
     val context = LocalContext.current
@@ -55,8 +61,8 @@ fun SettingsScreen(
     val preferredVisualizer by settingsViewModel.preferredVisualizer.collectAsState()
     val preferredSortingMode by settingsViewModel.preferredSortingMode.collectAsState()
     val highCaptureRate by settingsViewModel.highCaptureRate.collectAsState()
+    val listState = rememberLazyListState()
 
-    val scrollState = rememberScrollState()
     val minAudioLengthRatio by remember { derivedStateOf {
         (minAudioLength - MIN_AUDIO_LENGTH).toFloat() / (MAX_AUDIO_LENGTH - MIN_AUDIO_LENGTH)
     } }
@@ -82,6 +88,12 @@ fun SettingsScreen(
         ndriqaDonate(context)
     }
 
+    LaunchedEffect(preSelectedSetting) {
+        SettingsKeys.settingsIndices[preSelectedSetting]?.let { settingIndex ->
+            listState.animateScrollToItem(settingIndex)
+        }
+    }
+
     LaunchedEffect(highCaptureRate) {
         settingsViewModel.updateServiceHighCaptureRate(context)
     }
@@ -95,46 +107,62 @@ fun SettingsScreen(
                 onNavButtonPress = navController::navigateUp
             )
         },
-        bottomBar = { Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) { SettingsItemTitle(settingsViewModel.appVersion) } }
+        bottomBar = { SettingAppVersion(settingsViewModel.appVersion) },
     ) { paddingValues ->
+        val layoutDir = LocalLayoutDirection.current
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(scrollState),
+        val paddings = PaddingValues(
+            start = paddingValues.calculateStartPadding(layoutDir) + PaddingCompact,
+            end = paddingValues.calculateEndPadding(layoutDir) + PaddingCompact,
+            top = paddingValues.calculateTopPadding() + PaddingCompact,
+            bottom = paddingValues.calculateBottomPadding() + PaddingCompact,
+        )
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(PaddingDefault)
+            verticalArrangement = Arrangement.spacedBy(PaddingCompact),
+            contentPadding = paddings,
+            state = listState
         ) {
-            SettingMinAudioLength(
-                minAudioLength = minAudioLength,
-                minAudioLengthRatio = minAudioLengthRatio,
-                onAudioRatioChange = ::onAudioRatioChange,
-            )
+            item(key = KEY_MIN_AUDIO) {
+                SettingMinAudioLength(
+                    minAudioLength = minAudioLength,
+                    minAudioLengthRatio = minAudioLengthRatio,
+                    onAudioRatioChange = ::onAudioRatioChange,
+                )
+            }
 
-            SettingPreferredSortingMode(
-                sortingMode = preferredSortingMode,
-                onSortingModeChange = settingsViewModel::updateSortingMode
-            )
+            item(key = KEY_SORTING_MODE) {
+                SettingPreferredSortingMode(
+                    sortingMode = preferredSortingMode,
+                    onSortingModeChange = settingsViewModel::updateSortingMode,
+                    isInitiallyExpanded = preSelectedSetting == KEY_SORTING_MODE
+                )
+            }
 
-            SettingPreferredVisualizer(
-                preferredVisualizer = preferredVisualizer,
-                onVisualizerTypeUpdate = settingsViewModel::updateVisualizerType,
-            )
+            item(key = KEY_VISUALIZER_TYPE) {
+                SettingPreferredVisualizer(
+                    preferredVisualizer = preferredVisualizer,
+                    onVisualizerTypeUpdate = settingsViewModel::updateVisualizerType,
+                    isInitiallyExpanded = preSelectedSetting == KEY_VISUALIZER_TYPE
+                )
+            }
 
-            SettingHighCaptureRate(
-                highCaptureRate = highCaptureRate,
-                onHighCaptureRateToggle = settingsViewModel::toggleHighCaptureRate
-            )
+            item(key = KEY_VISUALIZER_RATE) {
+                SettingHighCaptureRate(
+                    highCaptureRate = highCaptureRate,
+                    onHighCaptureRateToggle = settingsViewModel::toggleHighCaptureRate
+                )
+            }
 
-            SettingNdriqa(
-                onPlayStoreRate = ::onPlayStoreRating,
-                onDonate = ::onDonate,
-                onNdriqaApps = ::onOtherApps,
-            )
+            item(key = KEY_NDRIQA) {
+                SettingNdriqa(
+                    onPlayStoreRate = ::onPlayStoreRating,
+                    onDonate = ::onDonate,
+                    onNdriqaApps = ::onOtherApps,
+                )
+            }
         }
     }
 }
