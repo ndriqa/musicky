@@ -114,8 +114,11 @@ fun SongsScreen(
         if (currentPlayingSong == null) {
             onHustlePlayerExpandedToggle(true)
         }
-        playerViewModel.setQueue(queue)
-        playerViewModel.play(context, song)
+
+        playerViewModel.run {
+            setQueue(queue)
+            play(context, song)
+        }
     }
 
     fun deleteSong(song: Song) {

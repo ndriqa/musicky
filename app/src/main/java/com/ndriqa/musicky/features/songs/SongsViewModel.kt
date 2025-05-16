@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -44,28 +43,24 @@ class SongsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, SortingMode.Default)
 
     val query = _searchText.asStateFlow()
-    val allSongs = _songs.asStateFlow()
+    val allSongs = combine(_songs, _preferredSortingMode) { songs, sortingMode ->
+        when (sortingMode) {
+            SortingMode.Default -> songs // no sort
+            SortingMode.DateAsc -> songs.sortedBy { it.dateAdded }
+            SortingMode.DateDesc -> songs.sortedByDescending { it.dateAdded }
+            SortingMode.NameAsc -> songs.sortedBy { it.title.lowercase() }
+            SortingMode.NameDesc -> songs.sortedByDescending { it.title.lowercase() }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
-    val songs = combine(
-        _songs,
-        _searchText,
-        _preferredSortingMode
-    ) { allSongs, query, sortMode ->
-        val filtered = allSongs.filter { it.contains(query) }
-
-        when (sortMode) {
-            SortingMode.Default -> filtered // no sort
-            SortingMode.DateAsc -> filtered.sortedBy { it.dateAdded }
-            SortingMode.DateDesc -> filtered.sortedByDescending { it.dateAdded }
-            SortingMode.NameAsc -> filtered.sortedBy { it.title.lowercase() }
-            SortingMode.NameDesc -> filtered.sortedByDescending { it.title.lowercase() }
-        }
+    val songs = combine(allSongs, _searchText) { allSongs, query ->
+        allSongs.filter { it.contains(query) }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val albums = combine(_songs, _searchText) { allSongs, query ->
+    val albums = combine(allSongs, _searchText) { allSongs, query ->
         allSongs
             .groupBy { it.album }
             .map { Album(
