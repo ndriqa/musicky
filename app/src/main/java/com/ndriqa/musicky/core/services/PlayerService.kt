@@ -18,6 +18,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import com.ndriqa.musicky.MainActivity
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.PlayingState
 import com.ndriqa.musicky.core.data.RepeatMode
@@ -37,6 +38,8 @@ import timber.log.Timber
 
 class PlayerService : Service(), Player.Listener {
     private lateinit var exoPlayer: ExoPlayer
+    private lateinit var mediaSession: MediaSessionCompat
+
     private var audioVisualizer: Visualizer? = null
     private val fftAnalyzer = FftAnalyzer()
     private val audioAnalyzer = AudioAnalyzer()
@@ -83,8 +86,6 @@ class PlayerService : Service(), Player.Listener {
             )
         }
 
-    private lateinit var mediaSession: MediaSessionCompat
-
     override fun onCreate() {
         super.onCreate()
         initializeExoPlayer()
@@ -120,7 +121,20 @@ class PlayerService : Service(), Player.Listener {
     }
 
     private fun initializeMediaSession() {
-        mediaSession = MediaSessionCompat(this, "MusickySession").apply {
+        val mediaButtonIntent = Intent(Intent.ACTION_MEDIA_BUTTON)
+            .apply { setPackage(packageName) }
+        val pendingIntent = PendingIntent.getBroadcast(
+            /* context = */ applicationContext,
+            /* requestCode = */ 0,
+            /* intent = */ mediaButtonIntent,
+            /* flags = */ PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        mediaSession = MediaSessionCompat(
+            /* context = */ this.applicationContext,
+            /* tag = */ "MusickySession",
+            /* mbrComponent = */ null,
+            /* mbrIntent = */ pendingIntent
+        ).apply {
             isActive = true
             setCallback(object : MediaSessionCompat.Callback() {
                 override fun onPlay() = resume()
@@ -392,6 +406,16 @@ class PlayerService : Service(), Player.Listener {
             .setMediaSession(mediaSession.sessionToken)
             .setShowActionsInCompactView(1, 2, 3)
 
+        val contentIntent = Intent(this, MainActivity::class.java)
+            .apply { flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP }
+
+        val pendingIntent = PendingIntent.getActivity(
+            /* context = */ this,
+            /* requestCode = */ 0,
+            /* intent = */ contentIntent,
+            /* flags = */ PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         return NotificationCompat.Builder(this, channel.id)
             .setContentTitle(song?.title ?: getString(R.string.no_song_playing))
             .setContentText(song?.artist ?: getString(R.string.unknown))
@@ -404,6 +428,7 @@ class PlayerService : Service(), Player.Listener {
             .setStyle(mediaStyle)
             .setOnlyAlertOnce(true)
             .setOngoing(isPlaying)
+            .setContentIntent(pendingIntent)
             .build()
     }
 

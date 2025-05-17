@@ -17,7 +17,7 @@ android {
 
     defaultConfig {
         applicationId = "com.ndriqa.musicky"
-        minSdk = 26
+        minSdk = 27
         targetSdk = 35
         versionCode = 6
         versionName = "1.0.2"
@@ -98,6 +98,7 @@ dependencies {
     implementation(libs.media3.exoplayer.dash)
     implementation(libs.media3.ui)
     implementation(libs.media3.ui.compose)
+    implementation(libs.work)
 
     ksp(libs.room.compiler)
     kapt(libs.dagger.hilt.compiler)
