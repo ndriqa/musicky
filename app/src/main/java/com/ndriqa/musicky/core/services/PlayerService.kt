@@ -5,9 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
-import android.media.MediaPlayer
 import android.media.audiofx.Visualizer
-import android.net.Uri
 import android.os.IBinder
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
@@ -15,7 +13,10 @@ import android.support.v4.media.session.PlaybackStateCompat
 import androidx.annotation.OptIn
 import androidx.core.app.NotificationCompat
 import androidx.core.content.IntentCompat
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.PlayingState
@@ -33,10 +34,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import androidx.core.net.toUri
-import androidx.media3.common.C
-import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
 
 class PlayerService : Service(), Player.Listener {
     private lateinit var exoPlayer: ExoPlayer
@@ -60,15 +57,17 @@ class PlayerService : Service(), Player.Listener {
     private val activeQueue: List<Song>
         get() = if (shuffleEnabled) shuffledQueue else originalQueue
 
-    private val playState: PlayingState?
+    private val playState: PlayingState
         get() {
-            val song = activeQueue.getOrNull(currentIndex) ?: return null
+            val song = activeQueue.getOrNull(currentIndex)
 
-            val nextIndex = when (repeatMode) {
-                RepeatMode.All -> (currentIndex + 1) % activeQueue.size
-                RepeatMode.One -> currentIndex
-                RepeatMode.None -> null
-            }
+            val nextIndex = if (activeQueue.isNotEmpty()) {
+                when (repeatMode) {
+                    RepeatMode.All -> (currentIndex + 1) % activeQueue.size
+                    RepeatMode.One -> currentIndex
+                    RepeatMode.None -> null
+                }
+            } else null
             val nextSong = nextIndex?.let { activeQueue.getOrNull(it) }
             val isPlaying = exoPlayer.isPlaying
             val currentPosition = exoPlayer.currentPosition
@@ -222,10 +221,11 @@ class PlayerService : Service(), Player.Listener {
         exoPlayer.stop()
         exoPlayer.release()
 
+        removeSongsInfo()
         stopProgressUpdates()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
-        sendStateStoppedBroadcast()
+        refreshNotificationAndBroadcast()
     }
 
     private fun pause() {
@@ -248,8 +248,8 @@ class PlayerService : Service(), Player.Listener {
     }
 
     private fun playCurrent(goingForward: Boolean = true) {
-        val song = playState?.currentSong ?: return
-        buildSongNotification()?.let { startForeground(NOTIFICATION_ID, it) }
+        val song = playState.currentSong ?: return
+        startForeground(NOTIFICATION_ID, buildSongNotification())
 
         try {
             exoPlayer.apply {
@@ -300,7 +300,7 @@ class PlayerService : Service(), Player.Listener {
     }
 
     private fun toggleShuffle(enabled: Boolean? = null) {
-        val currentSong = playState?.currentSong ?: return
+        val currentSong = playState.currentSong ?: return
         shuffleEnabled = enabled ?: !shuffleEnabled
 
         if (shuffleEnabled) {
@@ -337,19 +337,13 @@ class PlayerService : Service(), Player.Listener {
         }.also { intent -> sendBroadcast(intent) }
     }
 
-    private fun sendStateStoppedBroadcast() {
-        Intent(ACTION_BROADCAST_UPDATE)
-            .apply { setPackage(packageName) }
-            .also { intent -> sendBroadcast(intent) }
-    }
-
     private fun removeSongNotification() {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(NOTIFICATION_ID)
     }
 
-    private fun buildSongNotification(): Notification? {
-        val state = playState ?: return null
+    private fun buildSongNotification(): Notification {
+        val state = playState
         val song = state.currentSong
         val isPlaying = state.isPlaying
         val channel = NotificationChannelInfo.Playing
@@ -415,17 +409,24 @@ class PlayerService : Service(), Player.Listener {
 
     fun startSelfSabotage() {
         debugLog("started service self sabotage")
-        stopForeground(STOP_FOREGROUND_DETACH)
         autoKillProcessJob?.cancel()
         autoKillProcessJob = CoroutineScope(Dispatchers.Main).launch {
             delay(AUTO_STOP_TIMEOUT)
-            if (playState?.isPlaying != true) {
-                sendStateStoppedBroadcast()
+            if (!playState.isPlaying) {
+                removeSongsInfo()
+                refreshNotificationAndBroadcast()
                 removeSongNotification()
+                stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
-                debugLog("service self unalived")
+                this@PlayerService.debugLog("service self unalived")
             }
         }
+    }
+
+    private fun removeSongsInfo() {
+        currentIndex = -1
+        originalQueue.clear()
+        shuffledQueue.clear()
     }
 
     fun stopSelfSabotage() {
@@ -434,8 +435,7 @@ class PlayerService : Service(), Player.Listener {
             debugLog("canceled self sabotage")
         }
         autoKillProcessJob = null
-        buildSongNotification()?.let { startForeground(NOTIFICATION_ID, it) }
-
+        startForeground(NOTIFICATION_ID, buildSongNotification())
     }
 
     private fun startSleepTimer(duration: Long) {
@@ -485,12 +485,9 @@ class PlayerService : Service(), Player.Listener {
     }
 
     private fun refreshNotificationAndBroadcast() {
-        val state = playState ?: return
-        val notification = buildSongNotification() ?: return
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-
-        notificationManager.notify(NOTIFICATION_ID, notification)
-        updateMediaSessionMetadata(state)
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.notify(NOTIFICATION_ID, buildSongNotification())
+        updateMediaSessionMetadata(playState)
         sendStateBroadcast()
     }
 
