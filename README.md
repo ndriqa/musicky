@@ -13,13 +13,15 @@
 - 🧠 User preferences stored with DataStore
 - 🔥 Firebase Analytics and Crashlytics integrated
 - 📦 No user accounts, no tracking — **privacy first**
+- 🔢 Sorting options: You can sort your songs more easily.
+- 🎧 ExoPlayer: Expect more reliable and flexible playback.
 
 ---
 
 ## 🛠️ Built With
 
 - Kotlin + Jetpack Compose
-- Media3
+- ExoPlayer
 - Room + DataStore
 - Firebase Analytics & Crashlytics
 - Modern Android Architecture (ViewModel, Clean layers, etc.)
