@@ -13,14 +13,14 @@ plugins {
 
 android {
     namespace = "com.ndriqa.musicky"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.ndriqa.musicky"
         minSdk = 27
-        targetSdk = 35
-        versionCode = 6
-        versionName = "1.0.2"
+        targetSdk = 36
+        versionCode = 7
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
