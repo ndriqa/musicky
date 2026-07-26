@@ -135,6 +135,8 @@ class SongsViewModel @Inject constructor(
                 val duration = cursor.getLong(durationCol)
                 if (duration < minAudioLength.value * 1000) continue // skip short clips
 
+                val dataPath = cursor.getString(dataCol) ?: continue
+
                 val potentialArtworkUri = ContentUris.withAppendedId(
                     /* contentUri = */ "content://media/external/audio/albumart".toUri(),
                     /* id = */ cursor.getLong(albumIdCol)
@@ -148,13 +150,13 @@ class SongsViewModel @Inject constructor(
 
                 songList += Song(
                     id = cursor.getLong(idCol),
-                    title = cursor.getString(titleCol)?.trim() ?: "Unknown Title",
-                    artist = cursor.getString(artistCol) ?: "Unknown Artist",
+                    title = cursor.getString(titleCol)?.trim() ?: DEFAULT_TITLE,
+                    artist = cursor.getString(artistCol) ?: DEFAULT_ARTIST,
                     album = cursor.getString(albumCol),
                     duration = duration,
-                    dateAdded = cursor.getString(dateAdded),
-                    dateModified = cursor.getString(dateModified),
-                    data = cursor.getString(dataCol),
+                    dateAdded = cursor.getString(dateAdded) ?: EMPTY_STRING,
+                    dateModified = cursor.getString(dateModified) ?: EMPTY_STRING,
+                    data = dataPath,
                     artworkUri = artworkUri
                 )
             }
@@ -237,5 +239,8 @@ class SongsViewModel @Inject constructor(
 
     companion object {
         const val DELETE_SONG_REQUEST_CODE = 6969
+        private const val DEFAULT_TITLE = "Unknown Title"
+        private const val DEFAULT_ARTIST = "Unknown Artist"
+        private const val EMPTY_STRING = ""
     }
 }
