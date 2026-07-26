@@ -26,7 +26,7 @@
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.Musicky"
-        tools:targetApi="36">
+        tools:targetApi="37">
         <activity
             android:name=".MainActivity"
             android:exported="true"

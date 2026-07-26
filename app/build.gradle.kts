@@ -18,7 +18,7 @@ android {
     defaultConfig {
         applicationId = "com.ndriqa.musicky"
         minSdk = 27
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 7
         versionName = "1.0.3"
 
