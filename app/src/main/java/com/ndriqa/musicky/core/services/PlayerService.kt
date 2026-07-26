@@ -5,7 +5,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.media.audiofx.Visualizer
+import android.os.Build
 import android.os.IBinder
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
@@ -263,7 +265,7 @@ class PlayerService : Service(), Player.Listener {
 
     private fun playCurrent(goingForward: Boolean = true) {
         val song = playState.currentSong ?: return
-        startForeground(NOTIFICATION_ID, buildSongNotification())
+        startForegroundCompat(NOTIFICATION_ID, buildSongNotification())
 
         try {
             exoPlayer.apply {
@@ -460,7 +462,15 @@ class PlayerService : Service(), Player.Listener {
             debugLog("canceled self sabotage")
         }
         autoKillProcessJob = null
-        startForeground(NOTIFICATION_ID, buildSongNotification())
+        startForegroundCompat(NOTIFICATION_ID, buildSongNotification())
+    }
+
+    private fun startForegroundCompat(id: Int, notification: Notification) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        } else {
+            startForeground(id, notification)
+        }
     }
 
     private fun startSleepTimer(duration: Long) {
