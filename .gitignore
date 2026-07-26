@@ -34,3 +34,7 @@ Thumbs.db
 
 # Google Services
 google-services.json
+
+# VS Code
+.vscode/
+
