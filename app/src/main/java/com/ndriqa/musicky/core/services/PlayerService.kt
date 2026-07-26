@@ -702,9 +702,21 @@ class PlayerService : MediaBrowserServiceCompat(), Player.Listener {
             }
             .build()
 
-        val mediaState =
-            if (state.isPlaying) PlaybackStateCompat.STATE_PLAYING
-            else PlaybackStateCompat.STATE_PAUSED
+        val mediaState = when (state.isPlaying) {
+            true -> PlaybackStateCompat.STATE_PLAYING
+            else -> PlaybackStateCompat.STATE_PAUSED
+        }
+
+        val shuffleModeCompat = when (state.isShuffleEnabled) {
+            true -> PlaybackStateCompat.SHUFFLE_MODE_ALL
+            else -> PlaybackStateCompat.SHUFFLE_MODE_NONE
+        }
+
+        val repeatModeCompat = when (state.repeatMode) {
+            RepeatMode.All -> PlaybackStateCompat.REPEAT_MODE_ALL
+            RepeatMode.One -> PlaybackStateCompat.REPEAT_MODE_ONE
+            RepeatMode.None -> PlaybackStateCompat.REPEAT_MODE_NONE
+        }
 
         val playbackState = PlaybackStateCompat.Builder()
             .setActions(
@@ -715,6 +727,7 @@ class PlayerService : MediaBrowserServiceCompat(), Player.Listener {
                 PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
                 PlaybackStateCompat.ACTION_SEEK_TO or
                 PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE or
+                PlaybackStateCompat.ACTION_SET_REPEAT_MODE or
                 PlaybackStateCompat.ACTION_STOP
             )
             .setState(
@@ -727,6 +740,8 @@ class PlayerService : MediaBrowserServiceCompat(), Player.Listener {
         mediaSession.apply {
             setMetadata(metadata)
             setPlaybackState(playbackState)
+            setShuffleMode(shuffleModeCompat)
+            setRepeatMode(repeatModeCompat)
         }
     }
 
