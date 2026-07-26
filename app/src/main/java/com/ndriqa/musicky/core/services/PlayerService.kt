@@ -20,6 +20,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.IntentCompat
 import androidx.core.net.toUri
 import androidx.media.MediaBrowserServiceCompat
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -166,7 +168,14 @@ class PlayerService : MediaBrowserServiceCompat(), Player.Listener {
     }
 
     private fun initializeExoPlayer() {
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .build()
+
         exoPlayer = ExoPlayer.Builder(this)
+            .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ true)
+            .setHandleAudioBecomingNoisy(true)
             .build()
             .apply { addListener(this@PlayerService) }
     }
@@ -191,6 +200,14 @@ class PlayerService : MediaBrowserServiceCompat(), Player.Listener {
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         refreshNotificationAndBroadcast()
+        if (isPlaying) {
+            stopSelfSabotage()
+            startProgressUpdates()
+        } else {
+            persistCurrentPlaybackState()
+            stopProgressUpdates()
+            startSelfSabotage()
+        }
     }
 
     private fun initializeMediaSession() {
