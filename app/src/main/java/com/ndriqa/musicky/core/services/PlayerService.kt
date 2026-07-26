@@ -3,12 +3,15 @@ package com.ndriqa.musicky.core.services
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Service
+import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.audiofx.Visualizer
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
+import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -16,10 +19,12 @@ import androidx.annotation.OptIn
 import androidx.core.app.NotificationCompat
 import androidx.core.content.IntentCompat
 import androidx.core.net.toUri
+import androidx.media.MediaBrowserServiceCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.room.Room
 import com.ndriqa.musicky.MainActivity
 import com.ndriqa.musicky.R
 import com.ndriqa.musicky.core.data.PlayingState
@@ -27,20 +32,37 @@ import com.ndriqa.musicky.core.data.RepeatMode
 import com.ndriqa.musicky.core.data.Song
 import com.ndriqa.musicky.core.util.extensions.debugLog
 import com.ndriqa.musicky.core.util.extensions.loadAsBitmap
+import com.ndriqa.musicky.core.preferences.DataStoreManager
 import com.ndriqa.musicky.core.util.helpers.AudioAnalyzer
 import com.ndriqa.musicky.core.util.helpers.FftAnalyzer
 import com.ndriqa.musicky.core.util.notifications.NotificationChannelInfo
+import com.ndriqa.musicky.data.repositories.SongsRepository
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
-class PlayerService : Service(), Player.Listener {
+@AndroidEntryPoint
+class PlayerService : MediaBrowserServiceCompat(), Player.Listener {
+    @Inject
+    lateinit var songsRepository: SongsRepository
+
+    @Inject
+    lateinit var dataStoreManager: DataStoreManager
+
     private lateinit var exoPlayer: ExoPlayer
     private lateinit var mediaSession: MediaSessionCompat
+
+    private val serviceJob = SupervisorJob()
+    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
 
     private var audioVisualizer: Visualizer? = null
     private val fftAnalyzer = FftAnalyzer()
@@ -92,6 +114,55 @@ class PlayerService : Service(), Player.Listener {
         super.onCreate()
         initializeExoPlayer()
         initializeMediaSession()
+        sessionToken = mediaSession.sessionToken
+    }
+
+    override fun onGetRoot(
+        clientPackageName: String,
+        clientUid: Int,
+        rootHints: Bundle?
+    ): BrowserRoot {
+        return BrowserRoot(ROOT_MEDIA_ID, null)
+    }
+
+    override fun onLoadChildren(
+        parentId: String,
+        result: Result<MutableList<MediaBrowserCompat.MediaItem>>
+    ) {
+        if (parentId != ROOT_MEDIA_ID) {
+            result.sendResult(mutableListOf())
+            return
+        }
+
+        result.detach()
+
+        serviceScope.launch(Dispatchers.IO) {
+            val songs = songsRepository.getAllSongs()
+            if (originalQueue.isEmpty() && songs.isNotEmpty()) {
+                originalQueue.addAll(songs)
+            }
+
+            val mediaItems = songs.map { song ->
+                val artworkUri = song.artworkUri ?: ContentUris.withAppendedId(
+                    /* contentUri = */ ALBUM_ART_URI.toUri(),
+                    /* id = */ song.id
+                )
+
+                val description = MediaDescriptionCompat.Builder()
+                    .setMediaId(song.id.toString())
+                    .setTitle(song.title)
+                    .setSubtitle(song.artist)
+                    .setIconUri(artworkUri)
+                    .build()
+
+                MediaBrowserCompat.MediaItem(
+                    /* description = */ description,
+                    /* flags = */ MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
+                )
+            }.toMutableList()
+
+            result.sendResult(mediaItems)
+        }
     }
 
     private fun initializeExoPlayer() {
@@ -139,6 +210,30 @@ class PlayerService : Service(), Player.Listener {
         ).apply {
             isActive = true
             setCallback(object : MediaSessionCompat.Callback() {
+                override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
+                    mediaId ?: return
+                    val songId = mediaId.toLongOrNull() ?: return
+
+                    serviceScope.launch(Dispatchers.IO) {
+                        if (originalQueue.isEmpty()) {
+                            val songs = songsRepository.getAllSongs()
+                            originalQueue.addAll(songs)
+                            if (shuffleEnabled) {
+                                shuffledQueue.clear()
+                                shuffledQueue.addAll(originalQueue.shuffled())
+                            }
+                        }
+
+                        val index = activeQueue.indexOfFirst { it.id == songId }
+                        if (index != -1) {
+                            currentIndex = index
+                            launch(Dispatchers.Main) {
+                                playCurrent()
+                            }
+                        }
+                    }
+                }
+
                 override fun onPlay() = resume()
                 override fun onPause() = pause()
                 override fun onSkipToNext() = next()
@@ -234,6 +329,7 @@ class PlayerService : Service(), Player.Listener {
     }
 
     private fun stopPlayback() {
+        persistCurrentPlaybackState()
         exoPlayer.stop()
         exoPlayer.release()
 
@@ -245,6 +341,7 @@ class PlayerService : Service(), Player.Listener {
     }
 
     private fun pause() {
+        persistCurrentPlaybackState()
         exoPlayer.pause()
         refreshNotificationAndBroadcast()
         stopProgressUpdates()
@@ -253,17 +350,74 @@ class PlayerService : Service(), Player.Listener {
 
     private fun resume() {
         stopSelfSabotage()
-        exoPlayer.play()
-        refreshNotificationAndBroadcast()
-        startProgressUpdates()
+        if (currentIndex == -1 || activeQueue.isEmpty()) {
+            restoreLastPlayedAndPlay()
+        } else {
+            exoPlayer.play()
+            refreshNotificationAndBroadcast()
+            startProgressUpdates()
+        }
+    }
+
+    private fun restoreLastPlayedAndPlay() {
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                val songs = songsRepository.getAllSongs()
+                if (songs.isEmpty()) return@launch
+
+                originalQueue.clear()
+                originalQueue.addAll(songs)
+                if (shuffleEnabled) {
+                    shuffledQueue.clear()
+                    shuffledQueue.addAll(originalQueue.shuffled())
+                }
+
+                val savedSongId = dataStoreManager.lastSongId.firstOrNull()
+                val savedPosition = dataStoreManager.lastSongPosition.firstOrNull() ?: 0L
+
+                // Lenient matching: find song by ID, or fallback to first available song in library
+                val targetIndex = if (savedSongId != null) {
+                    activeQueue.indexOfFirst { it.id == savedSongId }.takeIf { it != -1 } ?: 0
+                } else 0
+
+                currentIndex = targetIndex
+                val targetSong = activeQueue.getOrNull(currentIndex) ?: return@launch
+
+                // Validate saved position against duration
+                val validPosition = if (savedPosition in 0..targetSong.duration) savedPosition else 0L
+
+                launch(Dispatchers.Main) {
+                    playCurrent(startPosition = validPosition)
+                }
+            } catch (e: Exception) {
+                debugLog("Error restoring last played song, falling back safely", e)
+                if (originalQueue.isNotEmpty()) {
+                    currentIndex = 0
+                    launch(Dispatchers.Main) { playCurrent() }
+                }
+            }
+        }
+    }
+
+    private fun persistCurrentPlaybackState() {
+        val currentSong = playState.currentSong ?: return
+        val position = exoPlayer.currentPosition
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                dataStoreManager.saveLastPlayed(currentSong.id, position)
+            } catch (e: Exception) {
+                Timber.d(e, "Failed to persist last played song state")
+            }
+        }
     }
 
     private fun seekTo(position: Long) {
         exoPlayer.seekTo(position)
         refreshNotificationAndBroadcast()
+        persistCurrentPlaybackState()
     }
 
-    private fun playCurrent(goingForward: Boolean = true) {
+    private fun playCurrent(goingForward: Boolean = true, startPosition: Long = 0L) {
         val song = playState.currentSong ?: return
         startForegroundCompat(NOTIFICATION_ID, buildSongNotification())
 
@@ -273,10 +427,14 @@ class PlayerService : Service(), Player.Listener {
                 clearMediaItems()
                 setMediaItem(MediaItem.fromUri(song.data.toUri()))
                 prepare()
+                if (startPosition > 0L) {
+                    seekTo(startPosition)
+                }
                 playWhenReady = true
             }
 
             refreshNotificationAndBroadcast()
+            persistCurrentPlaybackState()
         } catch (e: Exception) {
             debugLog("song file missing or can't be played: ${song.data}", e)
             debugLog("trying the next song now!")
@@ -330,6 +488,7 @@ class PlayerService : Service(), Player.Listener {
 
     override fun onDestroy() {
         super.onDestroy()
+        serviceJob.cancel()
         cleanUpAudioVisualizer()
         cleanUpMediaPlayer()
         stopProgressUpdates()
@@ -342,9 +501,10 @@ class PlayerService : Service(), Player.Listener {
 
     private fun cleanUpMediaPlayer() {
         exoPlayer.release()
+        mediaSession.release()
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onBind(intent: Intent?): IBinder? = super.onBind(intent)
 
     private fun sendStateBroadcast() {
         Intent(ACTION_BROADCAST_UPDATE).apply {
@@ -438,7 +598,7 @@ class PlayerService : Service(), Player.Listener {
         debugLog("started service self sabotage")
         autoKillProcessJob?.cancel()
         autoKillProcessJob = CoroutineScope(Dispatchers.Main).launch {
-            delay(AUTO_STOP_TIMEOUT)
+            delay(AUTO_STOP_TIMEOUT.milliseconds)
             if (!playState.isPlaying) {
                 removeSongsInfo()
                 refreshNotificationAndBroadcast()
@@ -481,7 +641,7 @@ class PlayerService : Service(), Player.Listener {
             autoStopTimeLeft = timeLeft
 
             while (isActive && timeLeft > 0) {
-                delay(REFRESH_FREQUENCY)
+                delay(REFRESH_FREQUENCY.milliseconds)
                 timeLeft -= REFRESH_FREQUENCY
                 autoStopTimeLeft = timeLeft
                 debugLog("sleep timer ticking: $timeLeft ms left")
@@ -503,7 +663,7 @@ class PlayerService : Service(), Player.Listener {
         progressJob = CoroutineScope(Dispatchers.Main).launch {
             while (isActive) {
                 refreshNotificationAndBroadcast()
-                delay(REFRESH_FREQUENCY)
+                delay(REFRESH_FREQUENCY.milliseconds)
             }
         }
     }
@@ -621,6 +781,9 @@ class PlayerService : Service(), Player.Listener {
     }
 
     companion object {
+        private const val ROOT_MEDIA_ID = "musicky_root"
+        private const val ALBUM_ART_URI = "content://media/external/audio/albumart"
+
         private const val REFRESH_FREQUENCY = 1000L
 
         const val ACTION_PLAY = "com.ndriqa.action.PLAY"

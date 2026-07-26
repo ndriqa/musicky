@@ -40,8 +40,19 @@
 
         <service
             android:name=".core.services.PlayerService"
-            android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+            <meta-data
+                android:name="androidx.car.app.CAR_MEDIA_SERVICE"
+                android:value="true" />
+        </service>
+
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
 
     </application>
 

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.ndriqa.musicky.core.data.SortingMode
@@ -22,6 +23,8 @@ class DataStoreManager @Inject constructor(private val context: Context) {
     private val KeyHighCaptureRate = booleanPreferencesKey(BOOLEAN_KEY_HIGH_CAPTURE_RATE)
     private val KeyMinAudioLength = intPreferencesKey(INT_KEY_MIN_AUDIO_LENGTH)
     private val KeySongsSortingMode = stringPreferencesKey(STRING_KEY_PREFERRED_SORT)
+    private val KeyLastSongId = longPreferencesKey(LONG_KEY_LAST_SONG_ID)
+    private val KeyLastSongPosition = longPreferencesKey(LONG_KEY_LAST_SONG_POSITION)
 
     val highCaptureRate: Flow<Boolean> = context.dataStore.data
         .map { it[KeyHighCaptureRate] ?: false }
@@ -44,6 +47,12 @@ class DataStoreManager @Inject constructor(private val context: Context) {
                 .find { it.mode == mode }
                 ?: SortingMode.Default
         }
+
+    val lastSongId: Flow<Long?> = context.dataStore.data
+        .map { it[KeyLastSongId] }
+
+    val lastSongPosition: Flow<Long> = context.dataStore.data
+        .map { it[KeyLastSongPosition] ?: 0L }
 
     suspend fun setMinAudioLength(value: Int) {
         context.dataStore.edit { prefs ->
@@ -69,6 +78,17 @@ class DataStoreManager @Inject constructor(private val context: Context) {
         }
     }
 
+    suspend fun saveLastPlayed(songId: Long?, position: Long?) {
+        context.dataStore.edit { preferences ->
+            if (songId != null && songId > 0L) {
+                preferences[KeyLastSongId] = songId
+            }
+            if (position != null && position >= 0L) {
+                preferences[KeyLastSongPosition] = position
+            }
+        }
+    }
+
     companion object {
         private const val STRING_KEY_EXAMPLE_PREF = "STRING_KEY_EXAMPLE_PREF"
         private const val BOOLEAN_KEY_VIBRATION = "BOOLEAN_KEY_VIBRATION"
@@ -77,6 +97,8 @@ class DataStoreManager @Inject constructor(private val context: Context) {
         private const val INT_KEY_MIN_AUDIO_LENGTH = "KEY_MIN_AUDIO_LENGTH"
         private const val STRING_KEY_DEFAULT_VISUALIZER = "STRING_KEY_DEFAULT_VISUALIZER"
         private const val STRING_KEY_PREFERRED_SORT = "STRING_KEY_PREFERRED_SORT"
+        private const val LONG_KEY_LAST_SONG_ID = "KEY_LAST_SONG_ID"
+        private const val LONG_KEY_LAST_SONG_POSITION = "KEY_LAST_SONG_POSITION"
 
         const val DEFAULT_MIN_AUDIO_LENGTH = 45
         const val MIN_AUDIO_LENGTH = 30
