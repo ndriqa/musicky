@@ -251,6 +251,40 @@ class PlayerService : MediaBrowserServiceCompat(), Player.Listener {
                     }
                 }
 
+                override fun onPlayFromSearch(query: String?, extras: Bundle?) {
+                    if (query.isNullOrBlank()) {
+                        onPlay()
+                        return
+                    }
+
+                    serviceScope.launch(Dispatchers.IO) {
+                        val songs = songsRepository.getAllSongs()
+                        if (songs.isEmpty()) return@launch
+
+                        val searchQuery = query.trim().lowercase()
+                        val matchedSong = songs.find { it.title.lowercase().contains(searchQuery) }
+                            ?: songs.find { it.artist.lowercase().contains(searchQuery) }
+                            ?: songs.find { it.album?.lowercase()?.contains(searchQuery) == true }
+
+                        originalQueue.clear()
+                        originalQueue.addAll(songs)
+                        if (shuffleEnabled) {
+                            shuffledQueue.clear()
+                            shuffledQueue.addAll(originalQueue.shuffled())
+                        }
+
+                        if (matchedSong != null) {
+                            currentIndex = activeQueue.indexOfFirst { it.id == matchedSong.id }.takeIf { it != -1 } ?: 0
+                        } else {
+                            currentIndex = 0
+                        }
+
+                        launch(Dispatchers.Main) {
+                            playCurrent()
+                        }
+                    }
+                }
+
                 override fun onPlay() = resume()
                 override fun onPause() = pause()
                 override fun onSkipToNext() = next()
@@ -745,6 +779,7 @@ class PlayerService : MediaBrowserServiceCompat(), Player.Listener {
                 PlaybackStateCompat.ACTION_SEEK_TO or
                 PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE or
                 PlaybackStateCompat.ACTION_SET_REPEAT_MODE or
+                PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH or
                 PlaybackStateCompat.ACTION_STOP
             )
             .setState(
